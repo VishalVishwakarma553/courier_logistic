@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Courier Platform Handover Documentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: same family as the other deliverables. Header block, then plain sections and tables. */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #152030; --muted: #5a6779; --line: #d9dfe8;
+  --accent: #1c5bc4; --accent-soft: #e6eefb; --total: #17703f;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+    --accent: #79a9ff; --accent-soft: #1a2a45; --total: #5fd391; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+  --accent: #79a9ff; --accent-soft: #1a2a45; --total: #5fd391; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; padding: 0 16px; }
+main { max-width: 900px; margin: 0 auto; padding-block: 40px 80px; display: grid; gap: 36px; }
+.head { background: var(--surface); border: 1.5px solid var(--ink); border-radius: 4px; }
+.head-top { padding: 12px 20px; border-bottom: 1.5px solid var(--ink); font: 500 12px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--muted); }
+.head-body { padding: 24px 20px; display: grid; gap: 8px; }
+h1 { font: 800 clamp(28px, 5vw, 42px)/1.05 var(--font-display); font-stretch: 85%; margin: 0; text-wrap: balance; }
+.lede { margin: 0; font-size: 17px; max-width: 70ch; }
+.lede strong { color: var(--total); }
+section { display: grid; gap: 14px; }
+h2 { font: 700 22px/1.2 var(--font-display); font-stretch: 90%; margin: 0; }
+p { margin: 0; max-width: 72ch; }
+em { color: var(--muted); }
+ol, ul { margin: 0; padding-left: 22px; display: grid; gap: 6px; max-width: 74ch; }
+li::marker { color: var(--accent); font-weight: 600; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+tbody tr:last-child td { border-bottom: 0; }
+th { font: 600 11px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+td { font-variant-numeric: tabular-nums; }
+td:first-child { font-weight: 600; }
+tr.total td { background: var(--accent-soft); font-weight: 700; }
+tr.total td strong { color: var(--total); }
+td:has(> strong:only-child) { white-space: nowrap; }
+</style>
+</head>
+<body>
+<main>
+  <header class="head">
+    <div class="head-top">DELIVERABLE 11 / ADMIN ACCESS &amp; DEPLOYMENT DOCUMENTATION</div>
+    <div class="head-body">
+      <h1>Admin Access &amp; Deployment Documentation</h1>
+      <p class="lede">What the client receives at handover so the platform can be run, managed and maintained without depending on us.</p>
+    </div>
+  </header>
+<section><h2>Access</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Access</th>
+<th>Given to</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Super Admin login to the platform</td>
+<td>Client owner</td>
+<td>From the first demo</td>
+</tr>
+<tr>
+<td>Admin logins for staff (operations, accounts, support)</td>
+<td>Client staff</td>
+<td>Before launch</td>
+</tr>
+<tr>
+<td>AWS account (servers, database, backups)</td>
+<td>Client owner</td>
+<td>From day 1 (client's account)</td>
+</tr>
+<tr>
+<td>GitHub (source code)</td>
+<td>Client owner</td>
+<td>From day 1 (client's account)</td>
+</tr>
+<tr>
+<td>Domain, email, SMS, WhatsApp, payment gateway accounts</td>
+<td>Client owner</td>
+<td>Always in the client's name</td>
+</tr>
+<tr>
+<td>All passwords and keys (password manager)</td>
+<td>Client owner</td>
+<td>At handover</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section><h2>Documents</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Document</th>
+<th>For</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Admin user guide</strong></td>
+<td>Client admin staff</td>
+<td>Customers, couriers, rates, pickups, billing, COD, reports, users and permissions</td>
+</tr>
+<tr>
+<td><strong>Customer user guide</strong></td>
+<td>Client's customers</td>
+<td>Booking, bulk upload, labels, tracking, wallet, invoices, support</td>
+</tr>
+<tr>
+<td><strong>Deployment guide</strong></td>
+<td>Developers</td>
+<td>How to release updates, environments, settings, roll back</td>
+</tr>
+<tr>
+<td><strong>Server &amp; hosting guide</strong></td>
+<td>Developers</td>
+<td>AWS setup, monitoring, alerts, costs</td>
+</tr>
+<tr>
+<td><strong>Backup &amp; restore guide</strong></td>
+<td>Developers</td>
+<td>How backups work and how to restore data</td>
+</tr>
+<tr>
+<td><strong>Courier integration guide</strong></td>
+<td>Developers</td>
+<td>How to add a new courier to the platform</td>
+</tr>
+<tr>
+<td><strong>API documentation</strong></td>
+<td>Developers</td>
+<td>Every API of the platform, generated automatically</td>
+</tr>
+<tr>
+<td><strong>Database guide</strong></td>
+<td>Developers</td>
+<td>All tables and what they store</td>
+</tr>
+<tr>
+<td><strong>Troubleshooting guide</strong></td>
+<td>Support / developers</td>
+<td>Common problems and how to fix them</td>
+</tr>
+</tbody>
+</table></div>
+</section>
+<section><h2>Training</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Session</th>
+<th>For</th>
+<th>Length</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Admin training</td>
+<td>Client admin and management</td>
+<td>2 sessions × 2 hours</td>
+</tr>
+<tr>
+<td>Operations training</td>
+<td>Pickup, tracking and support staff</td>
+<td>1 session × 2 hours</td>
+</tr>
+<tr>
+<td>Accounts training</td>
+<td>Billing, COD and wallet staff</td>
+<td>1 session × 2 hours</td>
+</tr>
+<tr>
+<td>Technical handover</td>
+<td>Client's developers (if any)</td>
+<td>1 session × 3 hours</td>
+</tr>
+</tbody>
+</table></div>
+<p>All sessions are recorded and the videos are handed over.</p>
+</section>
+</main>
+</body>
+</html>

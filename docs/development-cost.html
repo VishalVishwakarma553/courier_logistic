@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Courier Platform Development Cost</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one headline figure and one editable cost table. Edits recalculate instantly. */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #152030; --muted: #5a6779; --line: #d9dfe8;
+  --accent: #1c5bc4; --accent-soft: #e6eefb; --total: #17703f; --input-bg: #f8fafc;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+    --accent: #79a9ff; --accent-soft: #1a2a45; --total: #5fd391; --input-bg: #1b2430; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+  --accent: #79a9ff; --accent-soft: #1a2a45; --total: #5fd391; --input-bg: #1b2430; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; padding: 0 16px; }
+main { max-width: 860px; margin: 0 auto; padding-block: 40px 80px; display: grid; gap: 28px; }
+
+.head { background: var(--surface); border: 1.5px solid var(--ink); border-radius: 4px; }
+.head-body { padding: 24px 20px; display: grid; gap: 6px; }
+h1 { font: 800 clamp(28px, 5vw, 42px)/1.05 var(--font-display); font-stretch: 85%; margin: 0; }
+.sub { margin: 0; color: var(--muted); }
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); border-top: 1.5px solid var(--ink); }
+.figures div { padding: 16px 20px; border-right: 1px solid var(--line); display: grid; gap: 2px; }
+.figures div:last-child { border-right: 0; }
+.figures .l { font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.figures .v { font: 800 30px/1.1 var(--font-display); font-stretch: 85%; font-variant-numeric: tabular-nums; }
+.figures .main .v { color: var(--total); }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 560px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font: 600 11px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+th.r, td.r { text-align: right; }
+td.amt { font-family: var(--font-mono); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.role { font-weight: 500; }
+input[type="number"] {
+  width: 100%; max-width: 130px; font: 500 14px/1.2 var(--font-mono); text-align: right; color: var(--ink);
+  background: var(--input-bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px;
+}
+input.months { max-width: 80px; }
+input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.rupee { display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end; width: 100%; }
+.rupee span { color: var(--muted); font-family: var(--font-mono); font-size: 14px; }
+tr.sum td { font-weight: 700; background: var(--bg); }
+tr.grand td { font-weight: 800; background: var(--accent-soft); border-bottom: 0; }
+tr.grand td.amt { font-size: 16px; color: var(--total); }
+.pct { display: inline-flex; align-items: center; gap: 6px; }
+.pct input { max-width: 70px; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+button { font: 600 13.5px/1 var(--font-body); padding: 9px 14px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#saved { font-size: 13px; color: var(--muted); }
+.note { font-size: 13.5px; color: var(--muted); margin: 0; max-width: 76ch; }
+</style>
+</head>
+<body>
+<main>
+  <header class="head">
+    <div class="head-body">
+      <h1>Courier Platform Development Cost</h1>
+      <p class="sub">Generic Indian market rates (2026). Edit any rate or month below and the totals update.</p>
+    </div>
+    <div class="figures">
+      <div><span class="l">Development cost</span><span class="v" id="fig-dev">₹50.7 lakh</span></div>
+      <div><span class="l">GST</span><span class="v" id="fig-gst">₹9.1 lakh</span></div>
+      <div class="main"><span class="l">Total including GST</span><span class="v" id="fig-total">₹59.9 lakh</span></div>
+    </div>
+  </header>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Role</th><th class="r">Monthly rate</th><th class="r">Months</th><th class="r">Cost</th></tr></thead>
+      <tbody id="rows"></tbody>
+      <tbody>
+        <tr class="sum"><td>Team cost</td><td></td><td></td><td class="r amt" id="team">₹46,12,500</td></tr>
+        <tr><td><span class="pct">Contingency <input type="number" id="cont" min="0" max="50" step="1" value="10" aria-label="Contingency percent"> %</span></td><td></td><td></td><td class="r amt" id="contAmt">₹4,61,250</td></tr>
+        <tr class="sum"><td>Development cost</td><td></td><td></td><td class="r amt" id="dev">₹50,73,750</td></tr>
+        <tr><td><span class="pct">GST <input type="number" id="gst" min="0" max="28" step="1" value="18" aria-label="GST percent"> %</span></td><td></td><td></td><td class="r amt" id="gstAmt">₹9,13,275</td></tr>
+        <tr class="grand"><td>Total including GST</td><td></td><td></td><td class="r amt" id="grand">₹59,87,025</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="actions">
+    <button type="button" id="reset">Reset to market rates</button>
+    <span id="saved" role="status">Your changes are remembered in this browser.</span>
+  </div>
+
+  <p class="note">Months follow the 30-week timeline. Hosting, SMS/WhatsApp, payment gateway and other running costs are not included; they are covered separately in deliverable #8.</p>
+</main>
+<script>
+(function () {
+  const DEFAULTS = [
+    ['Tech lead / senior developer', 200000, 7],
+    ['Backend developer', 140000, 7],
+    ['Frontend developer', 130000, 7],
+    ['QA tester', 80000, 6.25],
+    ['UI/UX designer', 110000, 1.25],
+    ['Project manager (part-time)', 150000, 3.5],
+    ['DevOps / server setup (part-time)', 160000, 1],
+  ];
+  const KEY = 'courier-dev-cost-v1';
+  const inr = n => '₹' + new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.round(n));
+  const lakh = n => '₹' + (n / 100000).toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' lakh';
+  const tbody = document.getElementById('rows');
+  const $ = id => document.getElementById(id);
+
+  function load() {
+    try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.rows) && s.rows.length === DEFAULTS.length) return s; } catch (e) {}
+    return { rows: DEFAULTS.map(([, r, m]) => [r, m]), cont: 10, gst: 18 };
+  }
+  function save(state) { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  function render(state) {
+    tbody.innerHTML = '';
+    DEFAULTS.forEach(([role], i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        `<td class="role">${role}</td>` +
+        `<td class="r"><span class="rupee"><span>₹</span><input type="number" id="rate-${i}" min="0" step="5000" value="${state.rows[i][0]}" aria-label="${role} monthly rate"></span></td>` +
+        `<td class="r"><input type="number" class="months" id="months-${i}" min="0" step="0.25" value="${state.rows[i][1]}" aria-label="${role} months"></td>` +
+        `<td class="r amt" id="cost-${i}"></td>`;
+      tbody.appendChild(tr);
+    });
+    $('cont').value = state.cont;
+    $('gst').value = state.gst;
+    calc();
+  }
+
+  function num(id) { const v = parseFloat($(id).value); return isFinite(v) && v >= 0 ? v : 0; }
+
+  function calc() {
+    let team = 0;
+    const rows = DEFAULTS.map((_, i) => {
+      const rate = num('rate-' + i), months = num('months-' + i);
+      $('cost-' + i).textContent = inr(rate * months);
+      team += rate * months;
+      return [rate, months];
+    });
+    const cont = num('cont'), gst = num('gst');
+    const contAmt = team * cont / 100, dev = team + contAmt, gstAmt = dev * gst / 100, grand = dev + gstAmt;
+    $('team').textContent = inr(team);
+    $('contAmt').textContent = inr(contAmt);
+    $('dev').textContent = inr(dev);
+    $('gstAmt').textContent = inr(gstAmt);
+    $('grand').textContent = inr(grand);
+    $('fig-dev').textContent = lakh(dev);
+    $('fig-gst').textContent = lakh(gstAmt);
+    $('fig-total').textContent = lakh(grand);
+    save({ rows, cont, gst });
+  }
+
+  document.addEventListener('input', e => { if (e.target.matches('input[type="number"]')) calc(); });
+  $('reset').addEventListener('click', () => {
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    render(load());
+    $('saved').textContent = 'Reset to market rates.';
+  });
+  render(load());
+})();
+</script>
+</body>
+</html>

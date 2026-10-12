@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Courier Platform System Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: same spec-sheet family as the Database Design page. Sticky contents rail,
+   one reading column, waybill-style header. Diagrams sit in framed panels. */
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --ink: #152030;
+  --muted: #5a6779;
+  --line: #d9dfe8;
+  --accent: #1c5bc4;
+  --accent-soft: #e6eefb;
+  --warn: #a5620a;
+  --warn-soft: #fbf0df;
+  --good: #1d7a46;
+  --code-bg: #eef1f6;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+    --accent: #79a9ff; --accent-soft: #1a2a45; --warn: #f0a940; --warn-soft: #33270f;
+    --good: #5fd391; --code-bg: #1b2430; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+  --accent: #79a9ff; --accent-soft: #1a2a45; --warn: #f0a940; --warn-soft: #33270f;
+  --good: #5fd391; --code-bg: #1b2430; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.6;
+  padding: 0 16px;
+}
+.shell {
+  max-width: 1180px; margin: 0 auto; padding-block: 40px 80px;
+  display: grid; grid-template-columns: 1fr; gap: 40px;
+}
+@media (min-width: 1080px) { .shell { grid-template-columns: 220px minmax(0, 1fr); } }
+main { min-width: 0; max-width: 880px; display: grid; gap: 56px; }
+
+nav.toc { display: none; }
+@media (min-width: 1080px) {
+  nav.toc { display: block; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: 14px; }
+}
+.toc h2 { font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: toc; }
+.toc li { counter-increment: toc; }
+.toc a { display: flex; gap: 10px; padding: 5px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+.toc a::before { content: counter(toc); font-family: var(--font-mono); font-size: 12px; color: var(--line); min-width: 2ch; padding-top: 1px; }
+.toc a:hover, .toc a:focus-visible { background: var(--surface); color: var(--ink); outline: none; }
+.toc a:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+
+.waybill { background: var(--surface); border: 1.5px solid var(--ink); border-radius: 4px; }
+.waybill-top {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;
+  padding: 12px 20px; border-bottom: 1.5px solid var(--ink);
+  font: 500 12px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--muted);
+}
+.waybill-body { padding: 24px 20px 20px; display: grid; gap: 12px; }
+h1 { font: 800 clamp(30px, 5vw, 46px)/1.05 var(--font-display); font-stretch: 85%; letter-spacing: -.01em; margin: 0; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 64ch; }
+.waybill-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border-top: 1.5px solid var(--ink); margin: 0; }
+.waybill-meta div { padding: 12px 20px; border-right: 1px solid var(--line); }
+.waybill-meta div:last-child { border-right: 0; }
+.waybill-meta dt { font: 600 10.5px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.waybill-meta dd { margin: 6px 0 0; font: 700 20px/1.15 var(--font-display); font-stretch: 90%; }
+.barcode {
+  height: 28px; margin-top: 4px; max-width: 280px; opacity: .85;
+  background: repeating-linear-gradient(90deg,
+    var(--ink) 0 2px, transparent 2px 4px, var(--ink) 4px 5px, transparent 5px 8px,
+    var(--ink) 8px 11px, transparent 11px 12px, var(--ink) 12px 13px, transparent 13px 16px);
+}
+
+section { display: grid; gap: 18px; scroll-margin-top: 24px; }
+.eyebrow { font: 600 11px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h2 { font: 700 clamp(22px, 3vw, 28px)/1.15 var(--font-display); font-stretch: 90%; margin: 0; text-wrap: balance; }
+h3 { font: 600 17px/1.3 var(--font-body); margin: 0; }
+p { margin: 0; max-width: 70ch; }
+.muted { color: var(--muted); }
+code, .mono { font-family: var(--font-mono); font-size: .86em; }
+p code, li code, td code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 70ch; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th { font: 600 11px/1.2 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+td:first-child { font-weight: 600; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow-x: auto; }
+.diagram pre.mermaid { background: transparent; border: 0; padding: 0; margin: 0; text-align: center; font-family: var(--font-body); }
+.caption { font-size: 13.5px; color: var(--muted); }
+
+pre.code {
+  margin: 0; padding: 16px; border-radius: 8px; background: var(--code-bg);
+  border: 1px solid var(--line); overflow-x: auto; font: 12.5px/1.6 var(--font-mono);
+}
+pre.code .c { color: var(--muted); }
+pre.code .k { color: var(--accent); }
+
+.goals { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.goal { background: var(--surface); padding: 18px; display: grid; gap: 6px; align-content: start; }
+.goal p { font-size: 14.5px; color: var(--muted); }
+
+.style-callout {
+  border: 1.5px solid var(--accent); background: var(--accent-soft); border-radius: 8px;
+  padding: 16px 18px; display: grid; gap: 8px;
+}
+.style-callout strong { font-family: var(--font-display); font-stretch: 90%; font-size: 18px; }
+
+.services { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.svc { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 6px; padding: 14px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.svc .name { font: 600 13px/1 var(--font-mono); color: var(--accent); }
+.svc .tech { font: 700 17px/1.2 var(--font-display); font-stretch: 90%; }
+.svc p { font-size: 13.5px; color: var(--muted); }
+.svc .scale { font: 500 11.5px/1.3 var(--font-mono); color: var(--ink); border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 2px; }
+
+.targets { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.target { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 4px; }
+.target .v { font: 700 24px/1.1 var(--font-display); font-stretch: 85%; font-variant-numeric: tabular-nums; }
+.target .l { font-size: 13px; color: var(--muted); }
+
+.phases { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border-left: 2px solid var(--line); margin-left: 8px; }
+.phases li { position: relative; padding: 0 0 18px 22px; display: grid; gap: 4px; }
+.phases li:last-child { padding-bottom: 0; }
+.phases li::before { content: ""; position: absolute; left: -7px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); }
+.phases li:first-child::before { background: var(--accent); }
+.phases .ph { font: 600 12px/1 var(--font-mono); color: var(--accent); letter-spacing: .06em; }
+.phases .what { font-weight: 600; }
+.phases .uses { font-size: 14px; color: var(--muted); }
+
+.questions { margin: 0; padding-left: 22px; display: grid; gap: 10px; max-width: 70ch; }
+footer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 20px; }
+@media (prefers-reduced-motion: no-preference) { .toc a { transition: background .15s, color .15s; } }
+</style>
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#goals">Goals</a></li>
+      <li><a href="#overview">High-level architecture</a></li>
+      <li><a href="#codebase">Codebase structure</a></li>
+      <li><a href="#couriers">Courier integration layer</a></li>
+      <li><a href="#flows">Key flows</a></li>
+      <li><a href="#jobs">Background jobs</a></li>
+      <li><a href="#api">API design</a></li>
+      <li><a href="#security">Security</a></li>
+      <li><a href="#deployment">Deployment on AWS</a></li>
+      <li><a href="#scale">Scalability &amp; reliability</a></li>
+      <li><a href="#observability">Observability</a></li>
+      <li><a href="#phases">Build phases</a></li>
+      <li><a href="#decisions">Key decisions</a></li>
+      <li><a href="#questions">Open questions</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="waybill">
+      <div class="waybill-top">
+        <span>DELIVERABLE 01 / SYSTEM ARCHITECTURE</span>
+        <span>MULTI-COURIER BOOKING &amp; TRACKING ERP</span>
+      </div>
+      <div class="waybill-body">
+        <h1>Courier Platform System Architecture</h1>
+        <p class="lede">How the platform is built, deployed and scaled: the services that run it, how every courier plugs in, how a booking travels from quote to delivery, and how the system stays secure and available.</p>
+        <div class="barcode" aria-hidden="true"></div>
+      </div>
+      <dl class="waybill-meta">
+        <div><dt>Style</dt><dd>Modular monolith</dd></div>
+        <div><dt>Stack</dt><dd>Next.js · NestJS</dd></div>
+        <div><dt>Data</dt><dd>PostgreSQL · Redis · S3</dd></div>
+        <div><dt>Hosting</dt><dd>AWS Mumbai</dd></div>
+      </dl>
+    </header>
+
+    <section id="goals">
+      <div class="eyebrow">Section 1</div>
+      <h2>What the architecture is built around</h2>
+      <div class="goals">
+        <div class="goal"><h3>Many couriers, one platform</h3><p>Each courier is a plug-in behind one common interface. A new courier is a new adapter plus configuration from the admin panel.</p></div>
+        <div class="goal"><h3>Maximum automation</h3><p>Every step after booking (AWB, label, pickup, tracking, notifications, billing) runs as a background job with automatic retries.</p></div>
+        <div class="goal"><h3>Honest fallbacks</h3><p>Each courier declares what its integration supports. Anything unsupported becomes a manual task, and the screens say so.</p></div>
+        <div class="goal"><h3>Scalable</h3><p>API servers and background workers scale separately. Database, cache and file storage are managed AWS services.</p></div>
+        <div class="goal"><h3>Reliable</h3><p>Safe-to-repeat operations, retries with backoff, isolation of failing couriers, a standby database and point-in-time recovery.</p></div>
+        <div class="goal"><h3>Secure</h3><p>Role-based access, encrypted courier credentials, strict separation between customers, a full audit trail, data kept in India.</p></div>
+      </div>
+      <div class="style-callout">
+        <strong>Modular monolith with separate workers</strong>
+        <p>One codebase divided into strict modules (booking, rates, tracking, billing and so on), deployed as separate services that scale independently. This gives the scaling benefits of microservices where they matter, without the operating cost. Any module can be split out later without a rewrite.</p>
+      </div>
+    </section>
+
+    <section id="overview">
+      <div class="eyebrow">Section 2</div>
+      <h2>High-level architecture</h2>
+      <div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph Clients
+    C1[Customer panel - PWA]
+    C2[Admin control tower]
+    C3[Public tracking page]
+  end
+  CDN[CloudFront CDN + AWS WAF]
+  ALB[Application Load Balancer]
+  subgraph App["Application (ECS Fargate, multi-AZ)"]
+    WEB[web: Next.js]
+    API[api: NestJS REST API]
+    WRK[worker: NestJS queue processors]
+    SCH[scheduler: repeatable jobs]
+  end
+  subgraph Data
+    PG[(PostgreSQL - RDS primary)]
+    PGR[(Read replica)]
+    RD[(Redis - ElastiCache&lt;br/&gt;cache + BullMQ queues)]
+    S3[(S3 - labels, invoices, uploads)]
+  end
+  subgraph External
+    CA[Courier APIs&lt;br/&gt;Delhivery, Blue Dart, DHL, FedEx, UPS, Aramex]
+    PAY[Payment gateway&lt;br/&gt;Razorpay / Cashfree]
+    MSG[SMS, WhatsApp, Email providers]
+    KMS[AWS KMS + Secrets Manager]
+  end
+  C1 &amp; C2 &amp; C3 --&gt; CDN --&gt; ALB
+  ALB --&gt; WEB
+  ALB --&gt; API
+  WEB --&gt; API
+  API --&gt; PG
+  API --&gt; PGR
+  API --&gt; RD
+  API --&gt; S3
+  RD --&gt; WRK
+  SCH --&gt; RD
+  WRK --&gt; PG
+  WRK --&gt; S3
+  WRK --&gt; CA
+  WRK --&gt; MSG
+  API --&gt; CA
+  CA -- webhooks --&gt; ALB
+  PAY -- webhooks --&gt; ALB
+  API --&gt; PAY
+  API &amp; WRK --&gt; KMS
+</pre>
+      </div>
+      <h3>Runtime services</h3>
+      <div class="services">
+        <div class="svc"><span class="name">web</span><span class="tech">Next.js</span><p>Customer panel, admin panel and public tracking page in one installable PWA.</p><span class="scale">scales on requests</span></div>
+        <div class="svc"><span class="name">api</span><span class="tech">NestJS</span><p>REST API, login, validation, rate quotes, booking transactions, webhook intake.</p><span class="scale">scales on CPU and requests</span></div>
+        <div class="svc"><span class="name">worker</span><span class="tech">NestJS processors</span><p>AWB, labels, pickups, tracking, notifications, bulk import, invoices, exports.</p><span class="scale">scales on queue depth</span></div>
+        <div class="svc"><span class="name">scheduler</span><span class="tech">Repeatable jobs</span><p>Tracking polls, delay alerts, invoice cycles, nightly pincode sync.</p><span class="scale">fixed at 1 instance</span></div>
+      </div>
+      <p>The API never does slow work inside a customer's request unless the answer is needed right then, as with rate quotes. Everything else goes through a queue.</p>
+    </section>
+
+    <section id="codebase">
+      <div class="eyebrow">Section 3</div>
+      <h2>Codebase structure</h2>
+      <p>A single repository with shared code between the web app and the server.</p>
+<pre class="code">courier-erp/
+├── apps/
+│   ├── web/                  <span class="c">Next.js (customer, admin, public tracking)</span>
+│   └── server/               <span class="c">NestJS: one codebase, two entrypoints</span>
+│       ├── src/main.api.ts       <span class="c">→ starts the REST API</span>
+│       ├── src/main.worker.ts    <span class="c">→ starts the queue processors</span>
+│       └── src/modules/
+│           ├── auth/  customers/  couriers/  rates/
+│           ├── booking/  pickup/  tracking/  billing/
+│           └── notifications/  support/  reports/  admin/
+├── packages/
+│   ├── courier-adapters/     <span class="c">one folder per courier + the manual adapter</span>
+│   ├── shared/               <span class="c">validation schemas, types, status list (web + server)</span>
+│   └── pdf/                  <span class="c">label, invoice, commercial-invoice templates</span>
+├── database/                 <span class="c">schema.sql, migrations</span>
+└── infra/                    <span class="c">Terraform (AWS), Dockerfiles, CI/CD</span></pre>
+      <ul class="plain">
+        <li>A module touches only its own tables and uses other modules only through their service interfaces.</li>
+        <li>Modules communicate through events such as <code>shipment.manifested</code> and <code>shipment.delivered</code>. Billing, notifications and statistics subscribe to them, so booking doesn't depend on them.</li>
+        <li>Validation rules are shared by the web app and the API, so the two can never disagree.</li>
+      </ul>
+    </section>
+
+    <section id="couriers">
+      <div class="eyebrow">Section 4</div>
+      <h2>Courier integration layer</h2>
+      <p>The most important part of the system. Every courier, with or without an API, implements the same interface:</p>
+<pre class="code"><span class="k">export interface</span> CourierAdapter {
+  <span class="k">readonly</span> code: string;                       <span class="c">// 'delhivery', 'bluedart', 'manual'</span>
+  <span class="k">readonly</span> capabilities: CourierCapabilities;  <span class="c">// what this integration really supports</span>
+
+  checkServiceability(req): Promise&lt;ServiceabilityResult&gt;;
+  createShipment(req): Promise&lt;CreateShipmentResult&gt;;  <span class="c">// → AWB (+ label if provided)</span>
+  track(awbs: string[]): Promise&lt;TrackingUpdate[]&gt;;
+
+  getTransitTime?(req): Promise&lt;TatResult&gt;;
+  getLabel?(awb): Promise&lt;LabelResult&gt;;
+  schedulePickup?(req): Promise&lt;PickupResult&gt;;
+  cancel?(awb): Promise&lt;CancelResult&gt;;
+  parseWebhook?(headers, body): TrackingUpdate[];     <span class="c">// verifies the signature first</span>
+}</pre>
+      <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  B[Booking / Pickup / Tracking modules] --&gt; R[Adapter registry]
+  R --&gt; D[DelhiveryAdapter]
+  R --&gt; BD[BlueDartAdapter]
+  R --&gt; DH[DhlAdapter]
+  R --&gt; M[ManualAdapter]
+  D &amp; BD &amp; DH --&gt; H[Shared HTTP client&lt;br/&gt;timeout · retry · circuit breaker · logging · masking]
+  H --&gt; X[Courier APIs]
+  M --&gt; DB[(AWB stock, uploaded&lt;br/&gt;pincodes, manual tracking)]
+</pre>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Concern</th><th>How it's handled</th></tr></thead>
+          <tbody>
+            <tr><td>Selecting an adapter</td><td>Each courier's configured adapter is looked up in a registry. Credentials are loaded from the database, decrypted through AWS KMS and cached in memory for 5 minutes.</td></tr>
+            <tr><td>Missing capability</td><td>The calling module checks the capabilities first. If a courier has no pickup API, a manual pickup task is created for operations staff instead.</td></tr>
+            <tr><td>Timeouts</td><td>Serviceability and quotes: 3 seconds. AWB, pickup and tracking: 15 seconds.</td></tr>
+            <tr><td>Retries</td><td>Only on network errors, server errors and rate limits, with growing delays. Never on validation errors.</td></tr>
+            <tr><td>Courier outage</td><td>After repeated failures the courier is marked temporarily unavailable for 60 seconds. Quotes skip it and booking explains why. Everything else keeps working.</td></tr>
+            <tr><td>Logging</td><td>Every courier request and response is logged, with secrets and personal data masked.</td></tr>
+            <tr><td>Status mapping</td><td>Adapters return the courier's own codes; the tracking module maps them to the platform's 18 statuses.</td></tr>
+            <tr><td>Testing</td><td>Every adapter is tested against the courier's sandbox, plus recorded responses for automated builds.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Adding a new courier:</strong> write one adapter (typically 2–5 days, depending on the quality of the courier's API), register it, then configure services, credentials, pincodes and status mappings from the admin panel.</p>
+    </section>
+
+    <section id="flows">
+      <div class="eyebrow">Section 5</div>
+      <h2>Key flows</h2>
+      <h3>Quote and booking</h3>
+      <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor U as Customer
+  participant W as web
+  participant A as api
+  participant RE as Rate engine
+  participant C as Courier APIs
+  participant DB as PostgreSQL
+  participant Q as Queue (Redis)
+  participant WK as worker
+  U-&gt;&gt;W: Enter pickup, delivery, weight, dimensions, type
+  W-&gt;&gt;A: POST /v1/quotes
+  A-&gt;&gt;RE: Find eligible services for this customer
+  par each enabled courier service
+    RE-&gt;&gt;C: serviceability / TAT (3 s timeout, cached)
+  end
+  RE-&gt;&gt;DB: rate cards, zone, surcharges
+  A--&gt;&gt;W: Options: courier, ETA, price (quote valid 15 min)
+  U-&gt;&gt;W: Choose a courier, confirm
+  W-&gt;&gt;A: POST /v1/shipments + Idempotency-Key
+  A-&gt;&gt;DB: BEGIN: insert shipment, lock wallet, debit ledger, COMMIT
+  A-&gt;&gt;Q: enqueue shipment.create
+  A--&gt;&gt;W: booking_ref (waits up to 10 s for the AWB)
+  Q-&gt;&gt;WK: shipment.create
+  WK-&gt;&gt;C: createShipment → AWB (+ label)
+  WK-&gt;&gt;DB: status = manifested, save AWB
+  WK-&gt;&gt;Q: label, pickup, booking notification
+  W--&gt;&gt;U: AWB + label download
+</pre>
+      </div>
+      <ul class="plain">
+        <li>The customer usually gets the AWB on the same screen. If the courier is slow, they see "Booking confirmed, AWB is being generated" and the page updates when it's ready.</li>
+        <li>If AWB generation fails after every retry, the booking is marked failed, the wallet is refunded automatically, and operations staff are alerted.</li>
+        <li>The quoted price is locked for 15 minutes, so the price charged is the price shown.</li>
+      </ul>
+
+      <h3>Tracking: webhooks and polling</h3>
+      <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant C as Courier
+  participant A as api
+  participant DB as PostgreSQL
+  participant Q as Queue
+  participant WK as worker
+  participant N as Notifications
+  alt Courier supports webhooks
+    C-&gt;&gt;A: POST /v1/webhooks/{courier}
+    A-&gt;&gt;A: verify signature
+    A-&gt;&gt;DB: store raw event
+    A-&gt;&gt;Q: enqueue tracking.process
+    A--&gt;&gt;C: 200 OK (under 200 ms)
+  else Polling
+    Note over Q: every 5 min, shipments due for a check are picked up
+    Q-&gt;&gt;WK: tracking.poll (batched per courier)
+    WK-&gt;&gt;C: track(awbs)
+  end
+  WK-&gt;&gt;WK: map courier code to platform status
+  WK-&gt;&gt;DB: insert tracking event (duplicates ignored)
+  WK-&gt;&gt;DB: update shipment status if the move is valid
+  WK-&gt;&gt;Q: emit shipment.status_changed
+  Q-&gt;&gt;N: notify (out for delivery, delivered...)
+</pre>
+      </div>
+      <ul class="plain">
+        <li><strong>Adaptive polling:</strong> out for delivery every 30 minutes, in transit every 2 hours, pickup pending every hour, delivered never. This keeps courier API usage low.</li>
+        <li><strong>No backwards moves:</strong> an old event that arrives late (such as "in transit" after "delivered") is kept in the history but never changes the current status.</li>
+        <li>Every webhook is stored before processing, so it can be replayed if processing fails.</li>
+      </ul>
+
+      <h3>Pickup</h3>
+      <p>After AWBs are generated, the day's shipments from the same address and courier are grouped into one pickup request. If the courier has no pickup API, or the request fails after retries, a manual pickup task appears on the operations dashboard with an alert.</p>
+    </section>
+
+    <section id="jobs">
+      <div class="eyebrow">Section 6</div>
+      <h2>Background jobs</h2>
+      <p>All jobs run on BullMQ queues in Redis. Failed jobs are visible in a queue dashboard in the admin panel, where staff can retry them.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Queue</th><th>Triggered by</th><th>Retries</th><th>If it still fails</th></tr></thead>
+          <tbody>
+            <tr><td><code>shipment.create</code></td><td>Booking confirmed</td><td class="num">5, 10 s → 5 min</td><td>Booking failed, wallet refunded, alert</td></tr>
+            <tr><td><code>label.generate</code></td><td>AWB received</td><td class="num">3</td><td>Label regenerated on download</td></tr>
+            <tr><td><code>pickup.schedule</code></td><td>AWB received or customer request</td><td class="num">5</td><td>Manual pickup task and alert</td></tr>
+            <tr><td><code>tracking.process</code></td><td>Webhook received</td><td class="num">5</td><td>Shown as failed in the webhook log</td></tr>
+            <tr><td><code>tracking.poll</code></td><td>Every 5 minutes</td><td class="num">3</td><td>Retried next cycle</td></tr>
+            <tr><td><code>notify.send</code></td><td>Status changes</td><td class="num">3</td><td>Logged as failed</td></tr>
+            <tr><td><code>bulk.import</code></td><td>Excel upload</td><td class="num">per row</td><td>Error report Excel for the customer</td></tr>
+            <tr><td><code>cod.reconcile</code></td><td>Remittance file upload</td><td class="num">3</td><td>Unmatched lines listed for review</td></tr>
+            <tr><td><code>billing.invoice</code></td><td>Billing cycle</td><td class="num">3</td><td>Alert to accounts</td></tr>
+            <tr><td><code>report.export</code></td><td>Large export requested</td><td class="num">3</td><td>Customer notified</td></tr>
+            <tr><td><code>serviceability.sync</code></td><td>Nightly</td><td class="num">3</td><td>Previous data kept</td></tr>
+            <tr><td><code>alerts.scan</code></td><td>Hourly</td><td class="num">–</td><td>Raises delay and pending-pickup alerts</td></tr>
+            <tr><td><code>stats.aggregate</code></td><td>Status changes</td><td class="num">5</td><td>Nightly rebuild corrects any drift</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="api">
+      <div class="eyebrow">Section 7</div>
+      <h2>API design</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Topic</th><th>Convention</th></tr></thead>
+          <tbody>
+            <tr><td>Style</td><td>REST and JSON under <code>/api/v1</code>, with Swagger documentation generated from the code</td></tr>
+            <tr><td>Login</td><td>15-minute access token plus a rotating refresh token in a secure cookie. Optional API keys for customers who book from their own systems.</td></tr>
+            <tr><td>Permissions</td><td>Checked on every route. The customer is always taken from the login token, never from the request, so no customer can see another's data.</td></tr>
+            <tr><td>Customer vs staff</td><td>Separate response formats. Purchase cost and margin never appear in customer responses.</td></tr>
+            <tr><td>Repeat-safe requests</td><td>An <code>Idempotency-Key</code> header is required for booking, payment and wallet requests</td></tr>
+            <tr><td>Pagination</td><td>Cursor-based, so lists stay fast at millions of rows</td></tr>
+            <tr><td>Errors</td><td>One format with a stable code, such as <code>COURIER_UNAVAILABLE</code>, and a readable message</td></tr>
+            <tr><td>Rate limits</td><td>Per user and per IP. Public tracking: 30 lookups per minute per IP.</td></tr>
+            <tr><td>Long operations</td><td>Exports and bulk uploads return a job ID to check progress</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="security">
+      <div class="eyebrow">Section 8</div>
+      <h2>Security</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Layer</th><th>Controls</th></tr></thead>
+          <tbody>
+            <tr><td>Network</td><td>AWS WAF in front of everything. Application, database and Redis in private subnets; only the load balancer is public.</td></tr>
+            <tr><td>Transport</td><td>TLS everywhere, including database and Redis connections</td></tr>
+            <tr><td>Login</td><td>Strong password hashing, account lockout, optional two-factor login (required for Super Admin), session revocation</td></tr>
+            <tr><td>Access</td><td>Role-based permissions editable from the admin panel; every query limited to the customer's own data</td></tr>
+            <tr><td>Secrets</td><td>Courier credentials encrypted with keys held in AWS KMS. Application secrets in AWS Secrets Manager, never in code.</td></tr>
+            <tr><td>Files</td><td>Private storage. Downloads only through short-lived links issued after a permission check.</td></tr>
+            <tr><td>Webhooks</td><td>Signature verification, plus IP allowlists where the courier publishes them</td></tr>
+            <tr><td>Personal data</td><td>Masked in logs, deleted on a retention schedule, stored in AWS Mumbai to keep data in India (DPDP Act 2023)</td></tr>
+            <tr><td>Audit</td><td>Every admin change, login, export and manual status correction is recorded</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="deployment">
+      <div class="eyebrow">Section 9</div>
+      <h2>Deployment on AWS</h2>
+      <div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  U[Users] --&gt; CF[CloudFront + WAF]
+  CF --&gt; ALB
+  subgraph VPC["VPC - ap-south-1 (Mumbai), 2 Availability Zones"]
+    subgraph PUB["Public subnets"]
+      ALB[Application Load Balancer]
+      NAT[NAT Gateway]
+    end
+    subgraph PRIV["Private subnets"]
+      ECS1[ECS Fargate: web ×2+]
+      ECS2[ECS Fargate: api ×2+]
+      ECS3[ECS Fargate: worker ×2+]
+      RDS[(RDS PostgreSQL&lt;br/&gt;Multi-AZ + read replica)]
+      EC[(ElastiCache Redis&lt;br/&gt;primary + replica)]
+    end
+  end
+  ALB --&gt; ECS1 &amp; ECS2
+  ECS2 &amp; ECS3 --&gt; RDS &amp; EC
+  ECS3 --&gt; NAT --&gt; EXT[Courier / SMS / WhatsApp APIs]
+  ECS2 &amp; ECS3 --&gt; S3[(S3)]
+</pre>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Item</th><th>Choice</th></tr></thead>
+          <tbody>
+            <tr><td>Containers</td><td>Docker on ECS Fargate, with no servers to manage. The API scales on load, workers on queue length.</td></tr>
+            <tr><td>Database</td><td>RDS PostgreSQL 16 with a standby in a second zone, automated backups, point-in-time recovery and connection pooling</td></tr>
+            <tr><td>Cache and queues</td><td>ElastiCache Redis with a replica and automatic failover</td></tr>
+            <tr><td>Fixed outgoing IP</td><td>All courier calls leave from one fixed IP address, because several couriers only accept whitelisted IPs</td></tr>
+            <tr><td>Environments</td><td>Development, staging (courier sandbox credentials) and production, built identically with Terraform</td></tr>
+            <tr><td>Releases</td><td>GitHub Actions: tests, build, database migrations, deploy to staging, approval, then production with automatic rollback if health checks fail</td></tr>
+            <tr><td>Lower-cost start</td><td>The demo and early phase can run on a single server with Docker Compose plus a managed database, then move to ECS later with no code changes</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="scale">
+      <div class="eyebrow">Section 10</div>
+      <h2>Scalability and reliability</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Situation</th><th>What happens</th></tr></thead>
+          <tbody>
+            <tr><td>More users</td><td>More web and API containers are added; they hold no state of their own</td></tr>
+            <tr><td>More shipments</td><td>More worker containers are added; throughput grows almost in step</td></tr>
+            <tr><td>Heavy reports</td><td>Served from the read replica and pre-calculated daily totals</td></tr>
+            <tr><td>Database growth</td><td>Monthly partitions for logs and tracking, small indexes for work queues</td></tr>
+            <tr><td>A courier goes down</td><td>That courier is isolated; others keep working and its jobs retry later</td></tr>
+            <tr><td>A burst of webhooks</td><td>Each is stored and queued in under 200 ms, then processed at a controlled rate</td></tr>
+            <tr><td>An AWS zone fails</td><td>Database, Redis and every service already run in two zones</td></tr>
+            <tr><td>Disaster recovery</td><td>At most 5 minutes of data at risk, service restored within 1 hour, restores tested quarterly, daily backup copied to a second region</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Proposed performance targets</h3>
+      <div class="targets">
+        <div class="target"><span class="v">&lt; 3 s</span><span class="l">Rate quote across all couriers (p95)</span></div>
+        <div class="target"><span class="v">&lt; 10 s</span><span class="l">Booking confirmed with AWB (p95)</span></div>
+        <div class="target"><span class="v">&lt; 1 s</span><span class="l">Public tracking page (p95)</span></div>
+        <div class="target"><span class="v">&lt; 2 min</span><span class="l">Tracking freshness, webhook couriers</span></div>
+        <div class="target"><span class="v">99.9%</span><span class="l">Monthly availability</span></div>
+      </div>
+    </section>
+
+    <section id="observability">
+      <div class="eyebrow">Section 11</div>
+      <h2>Observability</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Signal</th><th>Tool</th><th>Used for</th></tr></thead>
+          <tbody>
+            <tr><td>Errors</td><td>Sentry</td><td>Every error with its stack trace and release</td></tr>
+            <tr><td>Logs</td><td>Structured logs in CloudWatch</td><td>Following one booking from API to queue to courier call</td></tr>
+            <tr><td>Metrics</td><td>CloudWatch or Grafana</td><td>Latency, queue length, job failures, success rate per courier</td></tr>
+            <tr><td>Traces</td><td>OpenTelemetry</td><td>Finding where time goes in a slow booking</td></tr>
+            <tr><td>Business health</td><td>Admin control tower</td><td>Pending pickups, delayed shipments, failed AWBs, webhook failures</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Alerts</strong> go to email, SMS or Slack when: a courier's API error rate exceeds 10% for 5 minutes, queues back up, AWB generation fails, webhook processing fails, the database runs hot or low on space, a scheduled job fails, or payment callbacks fail.</p>
+    </section>
+
+    <section id="phases">
+      <div class="eyebrow">Section 12</div>
+      <h2>Build phases</h2>
+      <ol class="phases">
+        <li><span class="ph">PHASE 0 · WORKING DEMO</span><span class="what">Customer login, booking, Delhivery AWB and label, tracking page</span><span class="uses">web, api, worker, PostgreSQL, Redis, S3, the courier adapter layer, Delhivery adapter</span></li>
+        <li><span class="ph">PHASE 1</span><span class="what">Rate engine, admin panel, pickups, notifications</span><span class="uses">Rates module, scheduler, SMS, WhatsApp and email providers</span></li>
+        <li><span class="ph">PHASE 2</span><span class="what">Blue Dart and the regional couriers</span><span class="uses">More adapters, the manual adapter, AWB stock, Excel pincode upload</span></li>
+        <li><span class="ph">PHASE 3</span><span class="what">Wallet, invoices, COD, reports</span><span class="uses">Billing module, payment gateway, read replica</span></li>
+        <li><span class="ph">PHASE 4</span><span class="what">International: DHL, FedEx, UPS, Aramex</span><span class="uses">International adapters, customs documents, commercial invoice</span></li>
+      </ol>
+    </section>
+
+    <section id="decisions">
+      <div class="eyebrow">Section 13</div>
+      <h2>Key decisions</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Decision</th><th>Chosen</th><th>Alternative</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Overall style</td><td>Modular monolith + workers</td><td>Microservices</td><td>Far less to operate for a small team, with the same scaling where it matters. Modules can be split out later.</td></tr>
+            <tr><td>Backend</td><td>NestJS (TypeScript)</td><td>Laravel (PHP)</td><td>One language across web, API and shared validation. Laravel with Horizon is a valid equivalent if PHP is required.</td></tr>
+            <tr><td>Database</td><td>PostgreSQL</td><td>MySQL</td><td>Stronger transactions, flexible JSON for courier data, partial indexes, built-in partitioning and fuzzy search.</td></tr>
+            <tr><td>Queues</td><td>BullMQ on Redis</td><td>AWS SQS</td><td>Delays, retries, scheduled jobs, rate limits and a dashboard built in; Redis is already needed for caching.</td></tr>
+            <tr><td>Hosting</td><td>AWS Mumbai</td><td>Other cloud or VPS</td><td>Data stays in India, managed database with point-in-time recovery, every needed service available.</td></tr>
+            <tr><td>Live updates</td><td>Short polling now, server-sent events later</td><td>WebSockets</td><td>Enough for booking status; tracking updates arrive minutes apart.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="questions">
+      <div class="eyebrow">Section 14</div>
+      <h2>Open questions for the client</h2>
+      <ol class="questions">
+        <li>Is there an existing AWS account, or a preference for another cloud provider?</li>
+        <li>Will any customers book through an API from their own websites or ERPs? This decides whether customer API keys are in phase 1.</li>
+        <li>Is there an existing domain and email-sending domain? Both are needed for email delivery and WhatsApp business verification.</li>
+        <li>What peak load is expected, for example during festival season? This sets the auto-scaling limits.</li>
+        <li>Who handles operations alerts outside office hours?</li>
+      </ol>
+    </section>
+
+    <footer>Companion to the Courier Platform Database Design. Source: <span class="mono">docs/ARCHITECTURE.md</span>.</footer>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: "strict",
+    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default" });
+</script>
+</body>
+</html>

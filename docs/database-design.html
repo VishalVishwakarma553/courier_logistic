@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Courier Platform Database Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a technical spec sheet. Sticky contents rail on wide screens, one reading column,
+   header styled like a waybill label. Status flow drawn as a delivery route. */
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --ink: #152030;
+  --muted: #5a6779;
+  --line: #d9dfe8;
+  --accent: #1c5bc4;
+  --accent-soft: #e6eefb;
+  --warn: #a5620a;
+  --warn-soft: #fbf0df;
+  --bad: #b3261e;
+  --bad-soft: #fbe6e4;
+  --code-bg: #eef1f6;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+    --accent: #79a9ff; --accent-soft: #1a2a45; --warn: #f0a940; --warn-soft: #33270f;
+    --bad: #ff8a80; --bad-soft: #3a1c1a; --code-bg: #1b2430; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+  --accent: #79a9ff; --accent-soft: #1a2a45; --warn: #f0a940; --warn-soft: #33270f;
+  --bad: #ff8a80; --bad-soft: #3a1c1a; --code-bg: #1b2430; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.6;
+  padding: 0 16px;
+}
+.shell {
+  max-width: 1180px; margin: 0 auto; padding-block: 40px 80px;
+  display: grid; grid-template-columns: 1fr; gap: 40px;
+}
+@media (min-width: 1080px) {
+  .shell { grid-template-columns: 220px minmax(0, 1fr); }
+}
+main { min-width: 0; max-width: 860px; display: grid; gap: 56px; }
+
+/* contents rail */
+nav.toc { display: none; }
+@media (min-width: 1080px) {
+  nav.toc {
+    display: block; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px);
+    align-self: start; font-size: 14px;
+  }
+}
+.toc h2 {
+  font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 12px;
+}
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: toc; }
+.toc li { counter-increment: toc; }
+.toc a {
+  display: flex; gap: 10px; padding: 6px 10px; border-radius: 6px;
+  color: var(--muted); text-decoration: none;
+}
+.toc a::before { content: counter(toc); font-family: var(--font-mono); font-size: 12px; color: var(--line); min-width: 1ch; padding-top: 1px; }
+.toc a:hover, .toc a:focus-visible { background: var(--surface); color: var(--ink); outline: none; }
+.toc a:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+
+/* waybill header */
+.waybill {
+  background: var(--surface); border: 1.5px solid var(--ink); border-radius: 4px;
+  display: grid; grid-template-columns: 1fr;
+}
+.waybill-top {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px;
+  padding: 12px 20px; border-bottom: 1.5px solid var(--ink);
+  font: 500 12px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--muted);
+}
+.waybill-body { padding: 24px 20px 20px; display: grid; gap: 12px; }
+h1 {
+  font: 800 clamp(30px, 5vw, 46px)/1.05 var(--font-display); font-stretch: 85%;
+  letter-spacing: -.01em; margin: 0; text-wrap: balance;
+}
+.lede { margin: 0; color: var(--muted); max-width: 62ch; }
+.waybill-meta {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  border-top: 1.5px solid var(--ink);
+}
+.waybill-meta div { padding: 12px 20px; border-right: 1px solid var(--line); }
+.waybill-meta div:last-child { border-right: 0; }
+.waybill-meta dt {
+  font: 600 10.5px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+.waybill-meta dd {
+  margin: 6px 0 0; font: 700 22px/1.1 var(--font-display); font-stretch: 90%;
+  font-variant-numeric: tabular-nums;
+}
+.barcode {
+  height: 28px; margin-top: 4px; max-width: 280px;
+  background: repeating-linear-gradient(90deg,
+    var(--ink) 0 2px, transparent 2px 4px, var(--ink) 4px 5px, transparent 5px 8px,
+    var(--ink) 8px 11px, transparent 11px 12px, var(--ink) 12px 13px, transparent 13px 16px);
+  opacity: .85;
+}
+
+/* sections */
+section { display: grid; gap: 18px; scroll-margin-top: 24px; }
+.eyebrow {
+  font: 600 11px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent);
+}
+h2 {
+  font: 700 clamp(22px, 3vw, 28px)/1.15 var(--font-display); font-stretch: 90%;
+  margin: 0; text-wrap: balance;
+}
+h3 { font: 600 17px/1.3 var(--font-body); margin: 0; }
+p { margin: 0; max-width: 68ch; }
+.muted { color: var(--muted); }
+code, .mono { font-family: var(--font-mono); font-size: .86em; }
+p code, li code, td code {
+  background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere;
+}
+ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 68ch; }
+
+/* tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th {
+  font: 600 11px/1.2 var(--font-body); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); background: var(--bg);
+}
+td:first-child { font-weight: 600; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tbl-list { font-family: var(--font-mono); font-size: 12.5px; font-weight: 400; color: var(--ink); line-height: 1.7; }
+
+/* principles */
+.principles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.principle { background: var(--surface); padding: 18px; display: grid; gap: 6px; align-content: start; }
+.principle p { font-size: 14.5px; color: var(--muted); }
+
+/* status route */
+.route { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; display: grid; gap: 18px; }
+.route-label { font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.stops { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 0; }
+.stops li {
+  display: flex; align-items: center; font: 500 12.5px/1 var(--font-mono);
+}
+.stops li span {
+  padding: 7px 10px; border-radius: 999px; border: 1.5px solid var(--accent);
+  background: var(--accent-soft); color: var(--ink); white-space: nowrap;
+}
+.stops li:not(:last-child)::after {
+  content: ""; width: 18px; height: 1.5px; background: var(--accent); display: block;
+}
+.stops li.end span { background: var(--accent); color: var(--surface); }
+.stops li.optional span { border-style: dashed; background: transparent; }
+.offpath { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 500 12.5px/1 var(--font-mono); padding: 7px 10px; border-radius: 999px; border: 1.5px solid; }
+.chip.warn { border-color: var(--warn); background: var(--warn-soft); }
+.chip.bad { border-color: var(--bad); background: var(--bad-soft); }
+
+/* callouts and code */
+pre {
+  margin: 0; padding: 16px; border-radius: 8px; background: var(--code-bg);
+  border: 1px solid var(--line); overflow-x: auto; font: 13px/1.6 var(--font-mono);
+}
+pre .c { color: var(--muted); }
+.steps { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 70ch; }
+.steps li::marker { font-family: var(--font-mono); color: var(--accent); }
+.note {
+  border-left: 3px solid var(--warn); background: var(--warn-soft);
+  padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 14.5px; max-width: 72ch;
+}
+.diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; overflow-x: auto; }
+.diagram pre.mermaid { background: transparent; border: 0; padding: 0; text-align: center; }
+
+/* module reference */
+.modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 16px; }
+.module { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.module header {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--line);
+}
+.module header h3 { font: 700 16px/1.2 var(--font-display); font-stretch: 90%; }
+.module header span { font: 500 12px/1 var(--font-mono); color: var(--muted); white-space: nowrap; }
+.module dl { margin: 0; padding: 4px 16px 12px; display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 0 14px; }
+.module dt, .module dd { padding: 8px 0; border-bottom: 1px dashed var(--line); margin: 0; }
+.module dt { font: 500 12.5px/1.5 var(--font-mono); overflow-wrap: anywhere; }
+.module dd { font-size: 13.5px; color: var(--muted); }
+.module dt:nth-last-of-type(1), .module dd:last-of-type { border-bottom: 0; }
+.ptag { font: 600 9.5px/1 var(--font-body); letter-spacing: .08em; color: var(--warn); border: 1px solid var(--warn); border-radius: 3px; padding: 2px 4px; margin-left: 6px; vertical-align: 2px; }
+
+.questions { margin: 0; padding-left: 22px; display: grid; gap: 10px; max-width: 70ch; }
+footer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 20px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .toc a { transition: background .15s, color .15s; }
+}
+</style>
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#principles">Design principles</a></li>
+      <li><a href="#modules">Modules</a></li>
+      <li><a href="#relations">Relationships</a></li>
+      <li><a href="#decisions">Key decisions</a></li>
+      <li><a href="#integrity">Duplicate protection</a></li>
+      <li><a href="#scale">Scalability plan</a></li>
+      <li><a href="#retention">Data retention</a></li>
+      <li><a href="#reference">Table reference</a></li>
+      <li><a href="#questions">Open questions</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="waybill">
+      <div class="waybill-top">
+        <span>DELIVERABLE 02 / DATABASE DESIGN</span>
+        <span>MULTI-COURIER BOOKING &amp; TRACKING ERP</span>
+      </div>
+      <div class="waybill-body">
+        <h1>Courier Platform Database Design</h1>
+        <p class="lede">How the platform stores bookings, rates, tracking, billing and courier integrations, why it is structured this way, and how it keeps up as shipment volume grows.</p>
+        <div class="barcode" aria-hidden="true"></div>
+      </div>
+      <dl class="waybill-meta">
+        <div><dt>Engine</dt><dd>PostgreSQL 16+</dd></div>
+        <div><dt>Tables</dt><dd>60</dd></div>
+        <div><dt>Partitioned</dt><dd>5 monthly</dd></div>
+        <div><dt>Shipment statuses</dt><dd>18</dd></div>
+      </dl>
+    </header>
+
+    <section id="principles">
+      <div class="eyebrow">Section 1</div>
+      <h2>Design principles</h2>
+      <div class="principles">
+        <div class="principle"><h3>One shipment model for every courier</h3><p>Each courier's own status codes are mapped onto 18 platform statuses, so dashboards, reports and notifications work the same way for every courier.</p></div>
+        <div class="principle"><h3>Couriers are data, not code</h3><p>Adding a courier means adding rows: services, credentials, serviceable pincodes, status mappings. No database change is needed.</p></div>
+        <div class="principle"><h3>History is never rewritten</h3><p>Addresses and prices are copied onto the shipment at booking. The wallet ledger and tracking history only ever get new rows.</p></div>
+        <div class="principle"><h3>The database blocks bad data</h3><p>Duplicate AWBs, double bookings, double wallet charges and repeat COD payouts are rejected by the database even if the application has a bug.</p></div>
+        <div class="principle"><h3>Money is exact</h3><p>Every amount is stored as an exact decimal. Weight is stored in whole grams. Floating-point numbers are never used for money.</p></div>
+        <div class="principle"><h3>Internal cost stays internal</h3><p>Purchase cost is stored beside the selling price, but only staff roles can see it. Customers see their approved selling rate only.</p></div>
+      </div>
+    </section>
+
+    <section id="modules">
+      <div class="eyebrow">Section 2</div>
+      <h2>Modules and the requirements they cover</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Module</th><th>Tables</th><th>Requirement</th></tr></thead>
+          <tbody>
+            <tr><td>Master data</td><td class="tbl-list">countries, states, pincodes, hs_codes</td><td>Pincodes, GST state codes, HS codes</td></tr>
+            <tr><td>Identity &amp; access</td><td class="tbl-list">roles, permissions, role_permissions, users, user_sessions</td><td>§9 secure login, §13 permissions, §14 role-based access</td></tr>
+            <tr><td>Customers</td><td class="tbl-list">customers, customer_addresses, customer_documents, files</td><td>§9 customer panel, §13 create, edit and block customers</td></tr>
+            <tr><td>Couriers &amp; integration</td><td class="tbl-list">couriers, courier_services, courier_credentials, courier_pickup_locations, courier_serviceability, courier_status_mappings, courier_awb_stock</td><td>§1–2 integrations, §13 add couriers without a developer, §15 manual fallback</td></tr>
+            <tr><td>Rate engine</td><td class="tbl-list">zones, zone_rules, zone_countries, rate_cards, rate_card_slabs, rate_card_charges, customer_courier_services, tax_rates</td><td>§8 rate comparison, customer-wise rates, slabs, surcharges, GST, margin</td></tr>
+            <tr><td>Booking &amp; shipments</td><td class="tbl-list">shipments, shipment_addresses, shipment_packages, shipment_items, shipment_documents, shipment_charges, bulk_uploads</td><td>§3 booking, §4 AWB and label, §9 bulk Excel booking, §12 international</td></tr>
+            <tr><td>Pickup</td><td class="tbl-list">pickup_requests</td><td>§5 automatic pickup</td></tr>
+            <tr><td>Tracking</td><td class="tbl-list">tracking_events, webhook_events</td><td>§6 live tracking by webhook and polling</td></tr>
+            <tr><td>Billing &amp; accounts</td><td class="tbl-list">wallets, ledger_entries, payments, payment_allocations, invoices, invoice_lines, number_sequences, courier_bills, courier_bill_lines</td><td>§11 billing, wallet, GST invoices, outstanding, purchase bills, profit and loss</td></tr>
+            <tr><td>COD</td><td class="tbl-list">cod_remittances, cod_remittance_lines, cod_payouts, cod_payout_lines</td><td>§9 COD settlement status, §11 COD reconciliation</td></tr>
+            <tr><td>Notifications</td><td class="tbl-list">notification_templates, notification_preferences, notification_logs</td><td>§10 SMS, WhatsApp and email</td></tr>
+            <tr><td>Support</td><td class="tbl-list">support_tickets, ticket_messages</td><td>§9 support tickets</td></tr>
+            <tr><td>System &amp; audit</td><td class="tbl-list">api_request_logs, audit_logs, system_settings, shipment_daily_stats</td><td>§7 dashboard, §13 API and webhook logs, §14 error logs and monitoring</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="relations">
+      <div class="eyebrow">Section 3</div>
+      <h2>How the core tables relate</h2>
+      <div class="diagram">
+<pre class="mermaid">
+erDiagram
+    CUSTOMERS ||--o{ USERS : "has logins"
+    CUSTOMERS ||--o{ CUSTOMER_ADDRESSES : "address book"
+    CUSTOMERS ||--|| WALLETS : has
+    CUSTOMERS ||--o{ LEDGER_ENTRIES : "debits and credits"
+    CUSTOMERS ||--o{ CUSTOMER_COURIER_SERVICES : "allowed services and pricing"
+    COURIERS ||--o{ COURIER_SERVICES : offers
+    COURIER_SERVICES ||--o{ COURIER_SERVICEABILITY : "serviceable pincodes"
+    COURIER_SERVICES ||--o{ RATE_CARDS : "purchase and selling"
+    RATE_CARDS ||--o{ RATE_CARD_SLABS : "weight slabs per zone"
+    RATE_CARDS ||--o{ RATE_CARD_CHARGES : surcharges
+    CUSTOMERS ||--o{ SHIPMENTS : books
+    COURIER_SERVICES ||--o{ SHIPMENTS : "carried by"
+    SHIPMENTS ||--|{ SHIPMENT_ADDRESSES : "sender and receiver"
+    SHIPMENTS ||--o{ SHIPMENT_CHARGES : "price breakdown"
+    SHIPMENTS ||--o{ TRACKING_EVENTS : history
+    PICKUP_REQUESTS ||--o{ SHIPMENTS : "picked up in"
+    INVOICES ||--o{ INVOICE_LINES : contains
+    INVOICES ||--o{ SHIPMENTS : bills
+    COD_REMITTANCES ||--o{ COD_REMITTANCE_LINES : "courier pays us"
+    COD_PAYOUTS ||--o{ COD_PAYOUT_LINES : "we pay customer"
+</pre>
+      </div>
+    </section>
+
+    <section id="decisions">
+      <div class="eyebrow">Section 4</div>
+      <h2>Key decisions</h2>
+
+      <h3>Shipment type is split into three fields</h3>
+      <p>The requirement lists "Prepaid, COD, To Pay, Reverse Pickup, International" as one list. These are independent: a reverse pickup can be prepaid, and an international shipment can be prepaid. The database stores <code>payment_mode</code> (prepaid, cod, to_pay), <code>direction</code> (forward, reverse) and <code>is_international</code>. The booking screen can still show the five familiar options.</p>
+
+      <h3>One status list for every courier</h3>
+      <p>Each courier sends different codes. Every code is translated into one of 18 platform statuses through an admin-editable mapping table. Codes with no mapping are logged and flagged for review.</p>
+      <div class="route">
+        <div class="route-label">Normal delivery route</div>
+        <ol class="stops">
+          <li><span>draft</span></li>
+          <li><span>booking_confirmed</span></li>
+          <li><span>manifested</span></li>
+          <li><span>pickup_scheduled</span></li>
+          <li><span>picked_up</span></li>
+          <li><span>in_transit</span></li>
+          <li><span>arrived_at_hub</span></li>
+          <li class="optional"><span>customs_clearance</span></li>
+          <li><span>out_for_delivery</span></li>
+          <li class="end"><span>delivered</span></li>
+        </ol>
+        <div class="route-label">Off the normal route</div>
+        <div class="offpath">
+          <span class="chip warn">delivery_failed</span>
+          <span class="chip warn">exception</span>
+          <span class="chip warn">rto_initiated</span>
+          <span class="chip warn">rto_in_transit</span>
+          <span class="chip warn">returned_to_sender</span>
+          <span class="chip bad">booking_failed</span>
+          <span class="chip bad">cancelled</span>
+          <span class="chip bad">lost</span>
+        </div>
+        <p class="muted" style="font-size:13.5px">Dashed stop: international shipments only. AWB generation moves a booking to <code>manifested</code>.</p>
+      </div>
+
+      <h3>How a price is calculated</h3>
+      <ol class="steps">
+        <li><strong>Zone.</strong> Zone rules are checked in priority order: same city, same state, metro to metro, special region, rest of India. International zones are set by destination country.</li>
+        <li><strong>Chargeable weight.</strong> The higher of actual weight and L × B × H ÷ volumetric divisor, with the divisor set per courier service.</li>
+        <li><strong>Freight.</strong> The matching weight slab gives a base rate plus a rate for each additional weight unit.</li>
+        <li><strong>Surcharges.</strong> Fuel percentage, COD (percentage or a minimum, whichever is higher), out-of-delivery-area, handling, insurance.</li>
+        <li><strong>Selling price for this customer.</strong> Their own selling rate card if one exists, otherwise purchase cost plus their markup, otherwise the default selling card.</li>
+        <li><strong>GST.</strong> SAC 996812. CGST + SGST or IGST depending on the place of supply.</li>
+      </ol>
+      <p>Both cost and selling price are frozen onto the shipment at booking. A later rate change never alters a past shipment, and profit is exact per shipment.</p>
+
+      <h3>Wallet and ledger</h3>
+      <p>The ledger is the source of truth and is append-only. The wallet balance is a cached copy for fast reads. A booking charge happens in one transaction:</p>
+<pre><span class="c">BEGIN;</span>
+SELECT balance FROM wallets WHERE customer_id = $1 FOR UPDATE;  <span class="c">-- one booking at a time per customer</span>
+<span class="c">-- check balance (prepaid) or credit limit (credit customers)</span>
+INSERT INTO ledger_entries (...) VALUES (... 'debit', 'shipment', shipment_id ...);
+UPDATE wallets SET balance = balance - $amount WHERE customer_id = $1;
+<span class="c">COMMIT;</span></pre>
+
+      <h3>Couriers without an API</h3>
+      <p>Each courier records its integration mode (api, manual or hybrid) and exactly what its integration supports. The screens use this to show customers and staff which steps are automatic. For manual couriers:</p>
+      <ul class="plain">
+        <li>serviceable pincodes come from an Excel upload</li>
+        <li>AWB numbers come from a pre-allotted series held in <code>courier_awb_stock</code></li>
+        <li>pickups are created as manual requests</li>
+        <li>tracking is updated by staff or by Excel upload</li>
+      </ul>
+
+      <h3>Security</h3>
+      <ul class="plain">
+        <li>Courier API secrets are encrypted (AES-256-GCM) before they are saved. The key is held in AWS KMS, never in the database, and can be rotated.</li>
+        <li>Passwords are stored as argon2id hashes. Login refresh tokens are stored only as hashes.</li>
+        <li>Credentials and personal data are masked before API and webhook logs are written.</li>
+        <li>Every change to rates, credentials, customers, permissions and manual status corrections is written to the audit log.</li>
+      </ul>
+    </section>
+
+    <section id="integrity">
+      <div class="eyebrow">Section 5</div>
+      <h2>Duplicate protection</h2>
+      <p>Each of these is enforced by a unique rule in the database, so a retried job or a double click can never create a second record.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Risk</th><th>Protection</th></tr></thead>
+          <tbody>
+            <tr><td>Customer double-clicks "Book"</td><td>One booking per customer per request key</td></tr>
+            <tr><td>Courier returns an AWB that is already used</td><td>One shipment per courier per AWB</td></tr>
+            <tr><td>Webhook and poll deliver the same tracking event</td><td>Each event is stored once per shipment</td></tr>
+            <tr><td>A retried job charges the wallet twice</td><td>A shipment is charged once and refunded once</td></tr>
+            <tr><td>A COD amount is remitted or paid out twice</td><td>Each shipment appears once in remittances and once in payouts</td></tr>
+            <tr><td>A payment gateway callback arrives twice</td><td>One record per gateway payment ID</td></tr>
+            <tr><td>Two workers take the same manual AWB</td><td>Row locking that skips AWBs another worker has taken</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="scale">
+      <div class="eyebrow">Section 6</div>
+      <h2>Scalability plan</h2>
+      <p>Planning assumption: <strong>10,000 shipments per day</strong>. These numbers will be revised once the client confirms expected volume.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Table</th><th>Rows per year</th><th>Strategy</th></tr></thead>
+          <tbody>
+            <tr><td><code>shipments</code></td><td class="num">~3.6 M</td><td>Indexed regular table. Comfortable past 50 M rows.</td></tr>
+            <tr><td><code>tracking_events</code></td><td class="num">~36–50 M</td><td>Monthly partitions</td></tr>
+            <tr><td><code>api_request_logs</code></td><td class="num">~50 M+</td><td>Monthly partitions, keep 6–12 months</td></tr>
+            <tr><td><code>webhook_events</code></td><td class="num">~30 M</td><td>Monthly partitions, keep 3–6 months</td></tr>
+            <tr><td><code>notification_logs</code></td><td class="num">~20 M</td><td>Monthly partitions</td></tr>
+            <tr><td><code>audit_logs</code></td><td class="num">small</td><td>Monthly partitions, kept long term</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Partitioning</h3>
+      <p>The five log tables are split into one partition per month. Removing an old month is instant, where deleting millions of rows would be slow. Before go-live, the pg_partman extension will create future months automatically.</p>
+
+      <h3>Indexes that stay small</h3>
+      <p>Work queues (shipments still to track, COD not yet settled, shipments not yet invoiced, open tickets, unpaid invoices) use partial indexes that cover only live rows. They stay small however many shipments have been delivered. Admin search uses exact indexes for AWB and mobile number, and fuzzy matching for names.</p>
+
+      <h3>Fast dashboards</h3>
+      <p>Workers update a daily summary table on every status change. The control tower dashboard and the courier-wise and customer-wise reports read that table, never the full shipments table. Live counters are cached for 30–60 seconds.</p>
+
+      <h3>Growth path</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Stage</th><th>Setup</th></tr></thead>
+          <tbody>
+            <tr><td>Launch</td><td>One managed PostgreSQL instance (AWS RDS) with automated backups and point-in-time recovery, plus connection pooling (PgBouncer)</td></tr>
+            <tr><td>Growth</td><td>Add a read replica for reports, exports and dashboards</td></tr>
+            <tr><td>Scale</td><td>Move heavy logs to their own database, or archive old months to S3</td></tr>
+            <tr><td>Large scale</td><td>Partition or shard shipments. Unlikely to be needed below about 100,000 shipments per day.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Cached outside the database (Redis)</h3>
+      <ul class="plain">
+        <li>Serviceable pincodes per service, for 24 hours, cleared when an admin uploads new data</li>
+        <li>Active rate cards per customer, cleared when a rate card is saved</li>
+        <li>Rate quotes shown to a customer, for about 15 minutes, so the booked price matches the quote</li>
+        <li>Public tracking page results, for about 60 seconds</li>
+      </ul>
+    </section>
+
+    <section id="retention">
+      <div class="eyebrow">Section 7</div>
+      <h2>Data retention</h2>
+      <p class="muted">Proposed, to be confirmed with the client.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Kept for</th></tr></thead>
+          <tbody>
+            <tr><td>Shipments, invoices, ledger, payments</td><td class="num">8 years</td></tr>
+            <tr><td>Audit logs</td><td class="num">8 years</td></tr>
+            <tr><td>Tracking events</td><td class="num">2 years online, then archived</td></tr>
+            <tr><td>Notification logs</td><td class="num">1 year</td></tr>
+            <tr><td>API request logs</td><td class="num">6 months</td></tr>
+            <tr><td>Webhook events</td><td class="num">3 months</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="reference">
+      <div class="eyebrow">Section 8</div>
+      <h2>Table reference</h2>
+      <p>All 60 tables, grouped by module. <span class="ptag">MONTHLY</span> marks a table partitioned by month.</p>
+      <div class="modules">
+        <article class="module"><header><h3>Master data</h3><span>4 tables</span></header><dl>
+          <dt>countries</dt><dd>ISO codes, dial code, currency</dd>
+          <dt>states</dt><dd>States with GST state codes</dd>
+          <dt>pincodes</dt><dd>City, state, metro flag and region, used for zoning</dd>
+          <dt>hs_codes</dt><dd>Customs codes for international items</dd>
+        </dl></article>
+
+        <article class="module"><header><h3>Identity &amp; access</h3><span>5 tables</span></header><dl>
+          <dt>roles</dt><dd>Staff and customer roles</dd>
+          <dt>permissions</dt><dd>Individual actions, such as creating a shipment or managing rates</dd>
+          <dt>role_permissions</dt><dd>Which role can do what</dd>
+          <dt>users</dt><dd>All logins. Staff have no customer; customer users belong to one</dd>
+          <dt>user_sessions</dt><dd>Active logins, stored as hashed tokens</dd>
+        </dl></article>
+
+        <article class="module"><header><h3>Customers</h3><span>4 tables</span></header><dl>
+          <dt>customers</dt><dd>Company, prepaid or credit, credit limit, GSTIN, status</dd>
+          <dt>customer_addresses</dt><dd>Saved pickup and delivery addresses</dd>
+          <dt>customer_documents</dt><dd>KYC documents and verification</dd>
+          <dt>files</dt><dd>References to labels, invoices and uploads stored in S3</dd>
+        </dl></article>
+
+        <article class="module"><header><h3>Couriers &amp; integration</h3><span>7 tables</span></header><dl>
+          <dt>couriers</dt><dd>Courier, integration mode and supported features</dd>
+          <dt>courier_services</dt><dd>Products such as Surface or Express, COD and reverse support, volumetric divisor</dd>
+          <dt>courier_credentials</dt><dd>Encrypted API keys for sandbox and production</dd>
+          <dt>courier_pickup_locations</dt><dd>Warehouses registered with a courier</dd>
+          <dt>courier_serviceability</dt><dd>Serviceable pincodes per service, with COD, ODA and transit days</dd>
+          <dt>courier_status_mappings</dt><dd>Courier status code to platform status</dd>
+          <dt>courier_awb_stock</dt><dd>Pre-allotted AWB numbers for manual couriers</dd>
+        </dl></article>
+
+        <article class="module"><header><h3>Rate engine</h3><span>8 tables</span></header><dl>
+          <dt>zones</dt><dd>Platform or courier-specific delivery zones</dd>
+          <dt>zone_rules</dt><dd>Rules that decide the zone for a route</dd>
+          <dt>zone_countries</dt><dd>Countries in each international zone</dd>
+          <dt>rate_cards</dt><dd>Purchase and selling rate cards with validity dates</dd>
+          <dt>rate_card_slabs</dt><dd>Weight slabs per zone</dd>
+          <dt>rate_card_charges</dt><dd>Fuel, COD, ODA, RTO, handling and other surcharges</dd>
+          <dt>customer_courier_services</dt><dd>Services each customer may use, and their pricing</dd>
+          <dt>tax_rates</dt><dd>GST rate and SAC code</dd>
+        </dl></article>
+
+        <article class="module"><header><h3>Shipments &amp; pickup</h3><span>9 tables</span></header><dl>
+          <dt>shipments</dt><dd>One row per booking: courier, AWB, weights, COD, price, status</dd>
+          <dt>shipment_addresses</dt><dd>Sender, receiver and return address copied at booking</dd>
+          <dt>shipment_packages</dt><dd>Pieces of a multi-piece shipment</dd>
+          <dt>shipment_items</dt><dd>Contents, values and HS codes</dd>
+          <dt>shipment_documents</dt><dd>Label, invoice, e-way bill, proof of delivery</dd>
+          <dt>shipment_charges</dt><dd>Price breakdown, both cost and selling</dd>
+          <dt>bulk_uploads</dt><dd>Excel booking jobs and their error reports</dd>
+          <dt>pickup_requests</dt><dd>Pickup date, courier pickup ID and status</dd>
+          <dt>tracking_events<span class="ptag">MONTHLY</span></dt><dd>Full tracking history</dd>
+        </dl></article>
+
+        <article class="module"><header><h3>Billing &amp; accounts</h3><span>9 tables</span></header><dl>
+          <dt>wallets</dt><dd>Current balance per customer</dd>
+          <dt>ledger_entries</dt><dd>Every debit and credit, never edited</dd>
+          <dt>payments</dt><dd>Gateway and offline payments</dd>
+          <dt>payment_allocations</dt><dd>Which payment settles which invoice</dd>
+          <dt>invoices</dt><dd>GST invoices with CGST, SGST, IGST and e-invoice fields</dd>
+          <dt>invoice_lines</dt><dd>One line per shipment billed</dd>
+          <dt>number_sequences</dt><dd>Gapless invoice numbering per financial year</dd>
+          <dt>courier_bills</dt><dd>Purchase bills received from couriers</dd>
+          <dt>courier_bill_lines</dt><dd>Bill lines matched against shipments, with differences flagged</dd>
+        </dl></article>
+
+        <article class="module"><header><h3>COD</h3><span>4 tables</span></header><dl>
+          <dt>cod_remittances</dt><dd>COD money received from a courier</dd>
+          <dt>cod_remittance_lines</dt><dd>Shipments included in each remittance</dd>
+          <dt>cod_payouts</dt><dd>COD money paid to a customer</dd>
+          <dt>cod_payout_lines</dt><dd>Shipments included in each payout</dd>
+        </dl></article>
+
+        <article class="module"><header><h3>Notifications &amp; support</h3><span>5 tables</span></header><dl>
+          <dt>notification_templates</dt><dd>SMS, WhatsApp and email templates per event</dd>
+          <dt>notification_preferences</dt><dd>Which events each customer wants sent</dd>
+          <dt>notification_logs<span class="ptag">MONTHLY</span></dt><dd>Every message sent and its delivery status</dd>
+          <dt>support_tickets</dt><dd>Customer complaints, linked to a shipment where relevant</dd>
+          <dt>ticket_messages</dt><dd>Conversation on a ticket, including staff-only notes</dd>
+        </dl></article>
+
+        <article class="module"><header><h3>System &amp; audit</h3><span>5 tables</span></header><dl>
+          <dt>api_request_logs<span class="ptag">MONTHLY</span></dt><dd>Every call made to a courier API</dd>
+          <dt>webhook_events<span class="ptag">MONTHLY</span></dt><dd>Every update a courier pushes to us, stored before processing</dd>
+          <dt>audit_logs<span class="ptag">MONTHLY</span></dt><dd>Who changed what, and when</dd>
+          <dt>system_settings</dt><dd>Platform-wide settings</dd>
+          <dt>shipment_daily_stats</dt><dd>Daily totals per customer and courier, for dashboards</dd>
+        </dl></article>
+      </div>
+    </section>
+
+    <section id="questions">
+      <div class="eyebrow">Section 9</div>
+      <h2>Open questions for the client</h2>
+      <ol class="questions">
+        <li>What daily shipment volume is expected at launch, and after one year? This sets the database size and when a read replica is needed.</li>
+        <li>Is the company's turnover above the GST e-invoicing threshold? If so, invoices need an IRN.</li>
+        <li>Are COD payouts to customers made net of freight charges, or in full?</li>
+        <li>What billing cycle should credit customers have: weekly, fortnightly or monthly?</li>
+        <li>Should customers be able to create their own sub-users, such as an admin and operators?</li>
+        <li>Are the retention periods in section 7 acceptable?</li>
+      </ol>
+    </section>
+
+    <footer>Schema validated on PostgreSQL 17 (compatible with 16+). Source files: <span class="mono">schema.sql</span> and <span class="mono">DATABASE_DESIGN.md</span>.</footer>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: "strict",
+    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default" });
+</script>
+</body>
+</html>

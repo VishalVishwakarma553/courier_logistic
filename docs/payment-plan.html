@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Courier Platform Payment Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: same family as the other deliverables. Header block, then plain sections and tables. */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #152030; --muted: #5a6779; --line: #d9dfe8;
+  --accent: #1c5bc4; --accent-soft: #e6eefb; --total: #17703f;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+    --accent: #79a9ff; --accent-soft: #1a2a45; --total: #5fd391; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+  --accent: #79a9ff; --accent-soft: #1a2a45; --total: #5fd391; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; padding: 0 16px; }
+main { max-width: 900px; margin: 0 auto; padding-block: 40px 80px; display: grid; gap: 36px; }
+.head { background: var(--surface); border: 1.5px solid var(--ink); border-radius: 4px; }
+.head-top { padding: 12px 20px; border-bottom: 1.5px solid var(--ink); font: 500 12px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--muted); }
+.head-body { padding: 24px 20px; display: grid; gap: 8px; }
+h1 { font: 800 clamp(28px, 5vw, 42px)/1.05 var(--font-display); font-stretch: 85%; margin: 0; text-wrap: balance; }
+.lede { margin: 0; font-size: 17px; max-width: 70ch; }
+.lede strong { color: var(--total); }
+section { display: grid; gap: 14px; }
+h2 { font: 700 22px/1.2 var(--font-display); font-stretch: 90%; margin: 0; }
+p { margin: 0; max-width: 72ch; }
+em { color: var(--muted); }
+ol, ul { margin: 0; padding-left: 22px; display: grid; gap: 6px; max-width: 74ch; }
+li::marker { color: var(--accent); font-weight: 600; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+tbody tr:last-child td { border-bottom: 0; }
+th { font: 600 11px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+td { font-variant-numeric: tabular-nums; }
+td:first-child { font-weight: 600; }
+tr.total td { background: var(--accent-soft); font-weight: 700; }
+tr.total td strong { color: var(--total); }
+td:has(> strong:only-child) { white-space: nowrap; }
+</style>
+</head>
+<body>
+<main>
+  <header class="head">
+    <div class="head-top">DELIVERABLE 12 / MILESTONE PAYMENT PLAN</div>
+    <div class="head-body">
+      <h1>Milestone Payment Plan</h1>
+      <p class="lede"><strong>Total development cost: ₹50,73,750 + 18% GST</strong></p>
+    </div>
+  </header>
+<section><p>Each payment is due when its milestone is delivered and approved.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Milestone</th>
+<th>Expected date</th>
+<th>%</th>
+<th>Amount</th>
+<th>GST (18%)</th>
+<th>Amount incl. GST</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>—</td>
+<td><strong>Advance</strong> (on signing)</td>
+<td>2 Nov 2026</td>
+<td>15%</td>
+<td>₹7,61,063</td>
+<td>₹1,36,991</td>
+<td>₹8,98,054</td>
+</tr>
+<tr>
+<td>M1</td>
+<td>Design sign-off</td>
+<td>13 Nov 2026</td>
+<td>10%</td>
+<td>₹5,07,375</td>
+<td>₹91,328</td>
+<td>₹5,98,703</td>
+</tr>
+<tr>
+<td>M2</td>
+<td>Working demo</td>
+<td>11 Dec 2026</td>
+<td>15%</td>
+<td>₹7,61,063</td>
+<td>₹1,36,991</td>
+<td>₹8,98,054</td>
+</tr>
+<tr>
+<td>M3</td>
+<td>Core operations</td>
+<td>22 Jan 2027</td>
+<td>15%</td>
+<td>₹7,61,063</td>
+<td>₹1,36,991</td>
+<td>₹8,98,054</td>
+</tr>
+<tr>
+<td>M4</td>
+<td>Domestic couriers</td>
+<td>19 Feb 2027</td>
+<td>10%</td>
+<td>₹5,07,375</td>
+<td>₹91,328</td>
+<td>₹5,98,703</td>
+</tr>
+<tr>
+<td>M5</td>
+<td>Billing &amp; reports</td>
+<td>26 Mar 2027</td>
+<td>10%</td>
+<td>₹5,07,375</td>
+<td>₹91,328</td>
+<td>₹5,98,703</td>
+</tr>
+<tr>
+<td>M6</td>
+<td><strong>Platform launch</strong></td>
+<td>9 Apr 2027</td>
+<td>15%</td>
+<td>₹7,61,063</td>
+<td>₹1,36,991</td>
+<td>₹8,98,054</td>
+</tr>
+<tr>
+<td>M7</td>
+<td>International shipping</td>
+<td>14 May 2027</td>
+<td>5%</td>
+<td>₹2,53,688</td>
+<td>₹45,664</td>
+<td>₹2,99,352</td>
+</tr>
+<tr>
+<td>M8</td>
+<td>Handover</td>
+<td>28 May 2027</td>
+<td>5%</td>
+<td>₹2,53,685</td>
+<td>₹45,663</td>
+<td>₹2,99,348</td>
+</tr>
+<tr class="total">
+<td></td>
+<td><strong>Total</strong></td>
+<td></td>
+<td><strong>100%</strong></td>
+<td><strong>₹50,73,750</strong></td>
+<td><strong>₹9,13,275</strong></td>
+<td><strong>₹59,87,025</strong></td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>Payment is due within <strong>7 days</strong> of each milestone's approval.</li>
+<li>If a milestone is delayed because something is pending from the client side (for example courier credentials), payment for the completed work in that milestone can be raised on the planned date.</li>
+<li>After launch, <strong>maintenance &amp; support</strong> is billed <strong>monthly</strong> (see the running costs document).</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

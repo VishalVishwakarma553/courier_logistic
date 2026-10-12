@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Courier API Feasibility Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: same spec-sheet family as the Architecture and Database pages.
+   The courier matrix is the centrepiece; status shown by colour AND symbol. */
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --ink: #152030;
+  --muted: #5a6779;
+  --line: #d9dfe8;
+  --accent: #1c5bc4;
+  --accent-soft: #e6eefb;
+  --ok: #17703f;     --ok-soft: #e2f4e9;
+  --maybe: #9a5b00;  --maybe-soft: #fbefd9;
+  --svc: #5b3fb3;    --svc-soft: #ece7fb;
+  --man: #57606c;    --man-soft: #eceef1;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+    --accent: #79a9ff; --accent-soft: #1a2a45;
+    --ok: #5fd391; --ok-soft: #133022; --maybe: #f0a940; --maybe-soft: #33270f;
+    --svc: #b9a4ff; --svc-soft: #251d40; --man: #a9b3c0; --man-soft: #222b37;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+  --accent: #79a9ff; --accent-soft: #1a2a45;
+  --ok: #5fd391; --ok-soft: #133022; --maybe: #f0a940; --maybe-soft: #33270f;
+  --svc: #b9a4ff; --svc-soft: #251d40; --man: #a9b3c0; --man-soft: #222b37;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; padding: 0 16px; }
+.shell { max-width: 1180px; margin: 0 auto; padding-block: 40px 80px; display: grid; grid-template-columns: 1fr; gap: 40px; }
+@media (min-width: 1080px) { .shell { grid-template-columns: 210px minmax(0, 1fr); } }
+main { min-width: 0; max-width: 900px; display: grid; gap: 56px; }
+
+nav.toc { display: none; }
+@media (min-width: 1080px) { nav.toc { display: block; position: sticky; top: 24px; align-self: start; font-size: 14px; } }
+.toc h2 { font: 600 11px/1 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: toc; }
+.toc li { counter-increment: toc; }
+.toc a { display: flex; gap: 10px; padding: 5px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+.toc a::before { content: counter(toc); font-family: var(--font-mono); font-size: 12px; color: var(--line); min-width: 1ch; padding-top: 1px; }
+.toc a:hover, .toc a:focus-visible { background: var(--surface); color: var(--ink); outline: none; }
+
+.waybill { background: var(--surface); border: 1.5px solid var(--ink); border-radius: 4px; }
+.waybill-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding: 12px 20px; border-bottom: 1.5px solid var(--ink); font: 500 12px/1.4 var(--font-mono); letter-spacing: .04em; color: var(--muted); }
+.waybill-body { padding: 24px 20px 20px; display: grid; gap: 12px; }
+h1 { font: 800 clamp(30px, 5vw, 46px)/1.05 var(--font-display); font-stretch: 85%; margin: 0; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 64ch; }
+.tally { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); border-top: 1.5px solid var(--ink); }
+.tally div { padding: 14px 20px; border-right: 1px solid var(--line); display: grid; gap: 2px; }
+.tally div:last-child { border-right: 0; }
+.tally .n { font: 800 34px/1 var(--font-display); font-stretch: 85%; font-variant-numeric: tabular-nums; }
+.tally .t { font-size: 13px; color: var(--muted); }
+.tally .ok .n { color: var(--ok); } .tally .maybe .n { color: var(--maybe); } .tally .part .n { color: var(--svc); } .tally .man .n { color: var(--man); }
+
+section { display: grid; gap: 18px; scroll-margin-top: 24px; }
+.eyebrow { font: 600 11px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h2 { font: 700 clamp(22px, 3vw, 28px)/1.15 var(--font-display); font-stretch: 90%; margin: 0; text-wrap: balance; }
+h3 { font: 600 17px/1.3 var(--font-body); margin: 0; }
+p { margin: 0; max-width: 70ch; }
+.muted { color: var(--muted); }
+ul.plain, ol.plain { margin: 0; padding-left: 22px; display: grid; gap: 6px; max-width: 72ch; }
+
+.answer { border: 1.5px solid var(--ok); background: var(--ok-soft); border-radius: 8px; padding: 16px 18px; display: grid; gap: 10px; }
+.answer strong.big { font: 700 20px/1.2 var(--font-display); font-stretch: 90%; }
+.quote { border-left: 3px solid var(--line); padding-left: 14px; color: var(--muted); font-style: italic; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th { font: 600 11px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+td:first-child { font-weight: 600; }
+
+.matrix th, .matrix td { text-align: center; vertical-align: middle; padding: 9px 8px; white-space: nowrap; }
+.matrix th:first-child, .matrix td:first-child { text-align: left; padding-left: 14px; position: sticky; left: 0; background: var(--surface); }
+.matrix th:first-child { background: var(--bg); }
+.matrix td.overall { text-align: left; white-space: normal; min-width: 150px; font-size: 13.5px; }
+.matrix td.days { font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.matrix tr.group td { background: var(--bg); font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 8px 14px; }
+.s { display: inline-grid; place-items: center; width: 30px; height: 26px; border-radius: 6px; font: 700 13px/1 var(--font-mono); border: 1.5px solid; }
+.s.ok { color: var(--ok); background: var(--ok-soft); border-color: var(--ok); }
+.s.maybe { color: var(--maybe); background: var(--maybe-soft); border-color: var(--maybe); }
+.s.svc { color: var(--svc); background: var(--svc-soft); border-color: var(--svc); }
+.s.man { color: var(--man); background: var(--man-soft); border-color: var(--man); border-style: dashed; }
+.s + .s { margin-left: 3px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 20px; font-size: 13.5px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.foot { font-size: 13px; color: var(--muted); }
+
+.pill { display: inline-block; font: 600 11.5px/1 var(--font-body); padding: 5px 9px; border-radius: 999px; border: 1.5px solid; white-space: nowrap; }
+.pill.ok { color: var(--ok); border-color: var(--ok); background: var(--ok-soft); }
+.pill.maybe { color: var(--maybe); border-color: var(--maybe); background: var(--maybe-soft); }
+.pill.part { color: var(--svc); border-color: var(--svc); background: var(--svc-soft); }
+.pill.man { color: var(--man); border-color: var(--man); background: var(--man-soft); }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.card header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.card h3 { font: 700 19px/1.2 var(--font-display); font-stretch: 90%; }
+.card dl { margin: 0; display: grid; gap: 8px; }
+.card dt { font: 600 10.5px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.card dd { margin: 3px 0 0; font-size: 14.5px; }
+.card .note { font-size: 13.5px; border-top: 1px dashed var(--line); padding-top: 10px; color: var(--muted); }
+.card .note strong { color: var(--ink); }
+code { font-family: var(--font-mono); font-size: .86em; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+
+.order { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--line); margin-left: 8px; display: grid; }
+.order li { position: relative; padding: 0 0 18px 22px; display: grid; gap: 2px; }
+.order li:last-child { padding-bottom: 0; }
+.order li::before { content: ""; position: absolute; left: -7px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); }
+.order li:first-child::before { background: var(--accent); }
+.order .k { font: 600 12px/1 var(--font-mono); color: var(--accent); letter-spacing: .06em; }
+.order .w { font-weight: 600; }
+.order .y { font-size: 14px; color: var(--muted); }
+
+.checklist { counter-reset: q; list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-width: 76ch; }
+.checklist li { counter-increment: q; display: grid; grid-template-columns: 2.2em 1fr; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; }
+.checklist li::before { content: counter(q, decimal-leading-zero); font: 600 12px/1.9 var(--font-mono); color: var(--accent); }
+.copy-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+button { font: 600 13.5px/1 var(--font-body); padding: 9px 14px; border-radius: 6px; border: 1.5px solid var(--accent); background: var(--accent); color: var(--surface); cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+#copy-status { font-size: 13px; color: var(--muted); }
+
+.sources { font-size: 13.5px; color: var(--muted); display: grid; gap: 4px; padding-left: 20px; margin: 0; }
+.sources a { color: var(--accent); overflow-wrap: anywhere; }
+footer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 20px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#answer">The short answer</a></li>
+      <li><a href="#matrix">Courier matrix</a></li>
+      <li><a href="#manual">What manual means</a></li>
+      <li><a href="#couriers">Courier by courier</a></li>
+      <li><a href="#options">Options without an API</a></li>
+      <li><a href="#order">Integration order</a></li>
+      <li><a href="#checklist">Questions for couriers</a></li>
+      <li><a href="#credentials">Credentials list</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="waybill">
+      <div class="waybill-top">
+        <span>DELIVERABLES 04 + 05 / COURIER FEASIBILITY</span>
+        <span>STATUS AS OF OCTOBER 2026</span>
+      </div>
+      <div class="waybill-body">
+        <h1>Courier API Feasibility Report</h1>
+        <p class="lede">Which of the 12 couriers can be connected automatically, which need a manual fallback, what to ask each courier, and which credentials to collect.</p>
+      </div>
+      <div class="tally">
+        <div class="ok"><span class="n">6</span><span class="t">Fully automatic</span></div>
+        <div class="maybe"><span class="n">2</span><span class="t">Likely automatic, API given privately</span></div>
+        <div class="part"><span class="n">3</span><span class="t">Automatic tracking, booking to confirm</span></div>
+        <div class="man"><span class="n">1</span><span class="t">Mostly manual</span></div>
+      </div>
+    </header>
+
+    <section id="answer">
+      <div class="eyebrow">Section 1</div>
+      <h2>The short answer</h2>
+      <div class="answer">
+        <strong class="big">Yes, the platform is feasible.</strong>
+        <p>Not every courier can be fully automatic on day one, but every courier can be used through the same platform. Where a courier has no API, our system takes over that step with a manual workflow, and the customer's experience stays almost the same.</p>
+      </div>
+      <p class="quote">This matches the client's own requirement (§15): where the courier's API doesn't support a feature, the system must clearly show that limitation and give a manual fallback.</p>
+    </section>
+
+    <section id="matrix">
+      <div class="eyebrow">Section 2</div>
+      <h2>Courier matrix</h2>
+      <div class="legend">
+        <span><span class="s ok">✓</span> Available by API</span>
+        <span><span class="s maybe">?</span> Likely, confirm with courier</span>
+        <span><span class="s svc">T</span> Through a tracking service</span>
+        <span><span class="s man">M</span> Manual in our system</span>
+      </div>
+      <div class="table-wrap">
+        <table class="matrix">
+          <thead><tr><th>Courier</th><th>Pincode</th><th>Rate / ETA</th><th>Booking + AWB</th><th>Label</th><th>Pickup</th><th>Tracking</th><th>Overall</th><th>Dev days*</th></tr></thead>
+          <tbody>
+            <tr class="group"><td colspan="9">Domestic</td></tr>
+            <tr><td>Delhivery</td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td class="overall"><span class="pill ok">Fully automatic</span></td><td class="days">5–7</td></tr>
+            <tr><td>Blue Dart</td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td class="overall"><span class="pill ok">Fully automatic</span></td><td class="days">7–10</td></tr>
+            <tr><td>SkyKing</td><td><span class="s maybe">?</span></td><td><span class="s maybe">?</span></td><td><span class="s maybe">?</span></td><td><span class="s maybe">?</span></td><td><span class="s maybe">?</span></td><td><span class="s maybe">?</span><span class="s svc">T</span></td><td class="overall"><span class="pill maybe">Likely automatic</span></td><td class="days">5–8</td></tr>
+            <tr><td>Madhur</td><td><span class="s maybe">?</span></td><td><span class="s maybe">?</span></td><td><span class="s maybe">?</span></td><td><span class="s maybe">?</span></td><td><span class="s maybe">?</span></td><td><span class="s maybe">?</span><span class="s svc">T</span></td><td class="overall"><span class="pill maybe">Likely automatic</span></td><td class="days">5–8</td></tr>
+            <tr><td>Shree Maruti</td><td><span class="s man">M</span></td><td><span class="s man">M</span></td><td><span class="s maybe">?</span><span class="s man">M</span></td><td><span class="s man">M</span></td><td><span class="s man">M</span></td><td><span class="s maybe">?</span><span class="s svc">T</span></td><td class="overall"><span class="pill part">Partly automatic</span></td><td class="days">3–5</td></tr>
+            <tr><td>Professional</td><td><span class="s man">M</span></td><td><span class="s man">M</span></td><td><span class="s maybe">?</span><span class="s man">M</span></td><td><span class="s man">M</span></td><td><span class="s man">M</span></td><td><span class="s maybe">?</span><span class="s svc">T</span></td><td class="overall"><span class="pill part">Partly automatic</span></td><td class="days">3–5</td></tr>
+            <tr><td>Shree Anjani</td><td><span class="s man">M</span></td><td><span class="s man">M</span></td><td><span class="s man">M</span></td><td><span class="s man">M</span></td><td><span class="s man">M</span></td><td><span class="s svc">T</span><span class="s man">M</span></td><td class="overall"><span class="pill man">Mostly manual</span></td><td class="days">1–2</td></tr>
+            <tr class="group"><td colspan="9">International</td></tr>
+            <tr><td>DHL Express</td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td class="overall"><span class="pill ok">Fully automatic</span></td><td class="days">7–10</td></tr>
+            <tr><td>FedEx</td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td class="overall"><span class="pill ok">Fully automatic</span> label approval needed</td><td class="days">8–12</td></tr>
+            <tr><td>UPS</td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td class="overall"><span class="pill ok">Fully automatic</span></td><td class="days">7–10</td></tr>
+            <tr><td>Aramex</td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td><span class="s ok">✓</span></td><td class="overall"><span class="pill ok">Fully automatic</span></td><td class="days">6–8</td></tr>
+            <tr><td>Skynet</td><td><span class="s man">M</span></td><td><span class="s man">M</span></td><td><span class="s maybe">?</span><span class="s man">M</span></td><td><span class="s maybe">?</span></td><td><span class="s man">M</span></td><td><span class="s maybe">?</span><span class="s svc">T</span></td><td class="overall"><span class="pill part">Partly automatic</span></td><td class="days">3–5</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="foot">* Developer days for that courier only, including testing. The shared manual workflow, used by every courier without an API, is built once: about 5–7 days. Where two symbols appear, the first is the plan if the courier confirms an API, the second is the fallback.</p>
+    </section>
+
+    <section id="manual">
+      <div class="eyebrow">Section 3</div>
+      <h2>What "manual" means for the customer</h2>
+      <p>For a manual courier the customer still books online, gets an AWB and a label immediately, and sees tracking on the same page. The extra work is on the operations side.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Step</th><th>Automatic courier</th><th>Manual courier</th></tr></thead>
+          <tbody>
+            <tr><td>Pincode check</td><td>Live from the courier</td><td>From a pincode list the admin uploads in Excel</td></tr>
+            <tr><td>Price</td><td>Our rate engine</td><td>Our rate engine (same)</td></tr>
+            <tr><td>AWB number</td><td>Courier gives it instantly</td><td>Taken from an AWB number series the courier gives us in advance</td></tr>
+            <tr><td>Label</td><td>Courier's label or ours</td><td>Our system prints the label with barcode</td></tr>
+            <tr><td>Pickup</td><td>Requested automatically</td><td>A pickup task appears for staff, who call or message the courier</td></tr>
+            <tr><td>Tracking</td><td>Automatic updates</td><td>Through a tracking service if it covers the courier, otherwise staff upload an Excel file</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="couriers">
+      <div class="eyebrow">Section 4</div>
+      <h2>Courier by courier</h2>
+      <div class="cards">
+        <article class="card"><header><h3>Delhivery</h3><span class="pill ok">Fully automatic</span></header><dl>
+          <div><dt>How to get the API</dt><dd>Open a business account (Delhivery One). The API token is in the client panel's API settings, or ask the account manager.</dd></div>
+          <div><dt>Credentials</dt><dd>API token, pickup location (warehouse) names, client name</dd></div>
+          <div><dt>Available</dt><dd>Pincode check, shipping cost, booking, AWB, label, pickup, tracking, cancel, failed-delivery actions. Test environment available.</dd></div>
+        </dl><p class="note"><strong>Build first.</strong> This is the courier for the working demo. Each pickup address must be registered as a warehouse with Delhivery; our system can do this automatically.</p></article>
+
+        <article class="card"><header><h3>Blue Dart</h3><span class="pill ok">Fully automatic</span></header><dl>
+          <div><dt>How to get the API</dt><dd>Open a customer account through sales or a branch, then register on the Blue Dart API Gateway portal and link your customer code.</dd></div>
+          <div><dt>Credentials</dt><dd>Customer code, area code, login ID, license key, Client ID, Client Secret</dd></div>
+          <div><dt>Available</dt><dd>Pincode check, transit time, AWB, pickup registration, tracking, cancel. Sandbox available.</dd></div>
+        </dl><p class="note">Some older Blue Dart services use an older API style (SOAP), which takes a little longer to build. COD and some products need activation on the account.</p></article>
+
+        <article class="card"><header><h3>SkyKing</h3><span class="pill maybe">Likely automatic</span></header><dl>
+          <div><dt>What we found</dt><dd>Integration platforms list full SkyKing support: booking, label, pickup, cancel, tracking and delivery estimates. The API exists but is given to business clients privately.</dd></div>
+          <div><dt>How to get the API</dt><dd>Ask the head office, not a local franchise, for API documentation and credentials.</dd></div>
+        </dl><p class="note"><strong>If they refuse:</strong> manual booking, plus automatic tracking through a tracking service.</p></article>
+
+        <article class="card"><header><h3>Madhur</h3><span class="pill maybe">Likely automatic</span></header><dl>
+          <div><dt>What we found</dt><dd>Integration platforms list booking, AWB and label, pickup, cancel, tracking and delivery estimates. The API exists but is given privately.</dd></div>
+          <div><dt>How to get the API</dt><dd>Ask the head office IT or corporate team for API access.</dd></div>
+        </dl><p class="note"><strong>If they refuse:</strong> manual booking, plus automatic tracking through a tracking service.</p></article>
+
+        <article class="card"><header><h3>Shree Maruti</h3><span class="pill part">Partly automatic</span></header><dl>
+          <div><dt>What we found</dt><dd>Tracking is offered by several tracking services. No booking API was found publicly.</dd></div>
+          <div><dt>Plan</dt><dd>Ask the corporate team for a booking API. Until then: manual booking with an AWB series, and automatic tracking through a tracking service.</dd></div>
+        </dl></article>
+
+        <article class="card"><header><h3>The Professional Couriers</h3><span class="pill part">Partly automatic</span></header><dl>
+          <div><dt>What we found</dt><dd>Tracking is covered by tracking services. No booking API was found publicly.</dd></div>
+          <div><dt>Plan</dt><dd>Same as Shree Maruti: ask for a corporate API, meanwhile manual booking and automatic tracking.</dd></div>
+        </dl></article>
+
+        <article class="card"><header><h3>Shree Anjani</h3><span class="pill man">Mostly manual</span></header><dl>
+          <div><dt>What we found</dt><dd>No official API. Only third-party tracking services list Shree Anjani.</dd></div>
+          <div><dt>Plan</dt><dd>Full manual workflow: uploaded pincode list, AWB series, our own labels, pickup tasks for staff, and tracking through a tracking service if reliable, otherwise Excel updates.</dd></div>
+        </dl><p class="note"><strong>Still ask:</strong> even a daily Excel tracking file from their head office can be imported automatically.</p></article>
+
+        <article class="card"><header><h3>DHL Express</h3><span class="pill ok">Fully automatic</span></header><dl>
+          <div><dt>How to get the API</dt><dd>Needs a DHL Express account number. Register at <code>developer.dhl.com</code> and request the MyDHL API.</dd></div>
+          <div><dt>Credentials</dt><dd>API key, API secret, account number</dd></div>
+          <div><dt>Available</dt><dd>Rates, transit time, shipment and label, pickup, tracking, customs documents. Test environment available.</dd></div>
+        </dl></article>
+
+        <article class="card"><header><h3>FedEx</h3><span class="pill ok">Fully automatic</span></header><dl>
+          <div><dt>How to get the API</dt><dd>Needs a FedEx account number. Create a project at <code>developer.fedex.com</code>.</dd></div>
+          <div><dt>Credentials</dt><dd>Client ID, Client Secret, account number</dd></div>
+          <div><dt>Available</dt><dd>Rates, shipping and label, pickup, tracking, address validation. Sandbox available.</dd></div>
+        </dl><p class="note"><strong>FedEx checks sample labels before allowing live use.</strong> Allow 1–2 weeks and start early.</p></article>
+
+        <article class="card"><header><h3>UPS</h3><span class="pill ok">Fully automatic</span></header><dl>
+          <div><dt>How to get the API</dt><dd>Needs a UPS account number. Create an app at <code>developer.ups.com</code>.</dd></div>
+          <div><dt>Credentials</dt><dd>Client ID, Client Secret, account number</dd></div>
+          <div><dt>Available</dt><dd>Rates, shipping and label, pickup, tracking.</dd></div>
+        </dl><p class="note">Confirm which UPS services your account can use from India.</p></article>
+
+        <article class="card"><header><h3>Aramex</h3><span class="pill ok">Fully automatic</span></header><dl>
+          <div><dt>How to get the API</dt><dd>Ask your Aramex account manager for API access and documentation.</dd></div>
+          <div><dt>Credentials</dt><dd>Username, password, account number, account PIN, account entity, country code</dd></div>
+          <div><dt>Available</dt><dd>Rate calculator, shipment and label, pickup, tracking.</dd></div>
+        </dl></article>
+
+        <article class="card"><header><h3>Skynet</h3><span class="pill part">Partly automatic</span></header><dl>
+          <div><dt>What we found</dt><dd>Tracking is covered by several tracking services and labels by one integration platform. Booking does not appear to be available through them. Some shipping software connects using an account token issued by Skynet.</dd></div>
+          <div><dt>Plan</dt><dd>Ask Skynet India whether they issue a booking API token. Until then: manual booking and automatic tracking.</dd></div>
+        </dl></article>
+      </div>
+    </section>
+
+    <section id="options">
+      <div class="eyebrow">Section 5</div>
+      <h2>Options for couriers without a booking API</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Option</th><th>How it works</th><th>Good</th><th>Watch out</th></tr></thead>
+          <tbody>
+            <tr><td>A. Manual workflow</td><td>AWB series, our labels, staff pickup tasks, Excel tracking upload</td><td>No extra cost; works for any courier</td><td>Needs operations staff time</td></tr>
+            <tr><td>B. Tracking service<br><span class="muted" style="font-weight:400">TrackingMore, AfterShip, Ship24</span></td><td>We send the AWB; they send back tracking updates for 1,000+ couriers</td><td>Automatic tracking without a courier API</td><td>Monthly fee (Ship24 lists plans from about $39 per 1,000 shipments a month); reliability varies by courier</td></tr>
+            <tr><td>C. Shipping platform<br><span class="muted" style="font-weight:400">ClickPost and similar</span></td><td>One API covering 150+ couriers, including some regional ones</td><td>Quick access to regional courier APIs</td><td>Monthly fee; adds a middle layer</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Recommendation: A + B.</strong> Build the manual workflow once (it is needed as a fallback anyway) and add one tracking service for couriers without tracking APIs. Consider C only if SkyKing, Madhur or others refuse direct API access.</p>
+    </section>
+
+    <section id="order">
+      <div class="eyebrow">Section 6</div>
+      <h2>Recommended integration order</h2>
+      <ol class="order">
+        <li><span class="k">1 · DEMO</span><span class="w">Delhivery</span><span class="y">Easiest and well documented. Proves the full flow end to end.</span></li>
+        <li><span class="k">2</span><span class="w">Manual workflow + Shree Anjani</span><span class="y">Built once, then every courier without an API works immediately.</span></li>
+        <li><span class="k">3</span><span class="w">Blue Dart</span><span class="y">Second major domestic courier.</span></li>
+        <li><span class="k">4</span><span class="w">SkyKing, Madhur</span><span class="y">As soon as their API credentials arrive.</span></li>
+        <li><span class="k">5</span><span class="w">Shree Maruti, Professional, Skynet</span><span class="y">Tracking service connection; booking APIs if confirmed.</span></li>
+        <li><span class="k">6 · INTERNATIONAL</span><span class="w">DHL, Aramex, UPS, FedEx</span><span class="y">Start the FedEx label approval early, since it takes the longest.</span></li>
+      </ol>
+    </section>
+
+    <section id="checklist">
+      <div class="eyebrow">Section 7</div>
+      <h2>Questions to send every courier</h2>
+      <p>Send these to each courier's sales or account manager when opening the business account.</p>
+      <ol class="checklist" id="questions">
+        <li>Do you provide an API for business customers? Please share the documentation.</li>
+        <li>Which of these can be done by API: pincode check, rate and delivery estimate, booking and AWB, label, pickup request, tracking, cancellation, failed delivery (NDR) actions, COD remittance report?</li>
+        <li>Do you send tracking updates to our server (webhooks), or do we need to check? Is there a limit on how often we can check?</li>
+        <li>Do you provide test (sandbox) credentials before live credentials?</li>
+        <li>Do we need to whitelist our server's IP address?</li>
+        <li>What label format and size is required (4×6 thermal or A4)? Can we print our own label?</li>
+        <li>If there is no booking API, can you give us a pre-allotted AWB number series?</li>
+        <li>How is COD remitted: how often, and in what report format?</li>
+        <li>Is there any charge for API access?</li>
+        <li>Who is our technical contact for integration issues?</li>
+      </ol>
+      <div class="copy-row"><button type="button" id="copy-btn">Copy questions</button><span id="copy-status" role="status"></span></div>
+    </section>
+
+    <section id="credentials">
+      <div class="eyebrow">Section 8</div>
+      <h2>Documents and credentials to collect</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Courier</th><th>Documentation from</th><th>Credentials to collect</th></tr></thead>
+          <tbody>
+            <tr><td>Delhivery</td><td>Delhivery One client panel or account manager</td><td>API token, warehouse names, client name</td></tr>
+            <tr><td>Blue Dart</td><td>Blue Dart API Gateway portal</td><td>Customer code, area code, login ID, license key, Client ID, Client Secret</td></tr>
+            <tr><td>DHL Express</td><td>developer.dhl.com (MyDHL API)</td><td>API key, API secret, account number</td></tr>
+            <tr><td>FedEx</td><td>developer.fedex.com</td><td>Client ID, Client Secret, account number</td></tr>
+            <tr><td>UPS</td><td>developer.ups.com</td><td>Client ID, Client Secret, account number</td></tr>
+            <tr><td>Aramex</td><td>Aramex account manager</td><td>Username, password, account number, PIN, entity, country code</td></tr>
+            <tr><td>SkyKing</td><td>Head office (private)</td><td>To confirm</td></tr>
+            <tr><td>Madhur</td><td>Head office (private)</td><td>To confirm</td></tr>
+            <tr><td>Shree Maruti</td><td>Corporate team</td><td>To confirm; AWB series if no API</td></tr>
+            <tr><td>Professional</td><td>Corporate team</td><td>To confirm; AWB series if no API</td></tr>
+            <tr><td>Skynet</td><td>Skynet India</td><td>Account token to confirm; AWB series if no API</td></tr>
+            <tr><td>Shree Anjani</td><td>None found</td><td>AWB series, serviceable pincode list (Excel)</td></tr>
+            <tr><td>Tracking service</td><td>TrackingMore, AfterShip or Ship24</td><td>One API key</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The Super Admin enters all credentials in the admin panel, where they are stored encrypted. Developers never need to see live production secrets.</p>
+    </section>
+
+    <section id="next">
+      <div class="eyebrow">Section 9</div>
+      <h2>What the client needs to do next</h2>
+      <ol class="plain">
+        <li><strong>Open business accounts</strong> with each courier. Documents usually needed: GST certificate, PAN, company registration, cancelled cheque, KYC, expected monthly volume.</li>
+        <li><strong>Send the questions in section 7</strong> to each courier and forward the replies.</li>
+        <li><strong>Start with Delhivery.</strong> Its token is enough to begin the working demo.</li>
+        <li><strong>Open DHL and FedEx accounts early.</strong> International approvals take the longest.</li>
+        <li><strong>Choose a tracking service</strong> once the regional couriers have replied.</li>
+      </ol>
+    </section>
+
+    <section id="sources">
+      <div class="eyebrow">Sources</div>
+      <h2>Research sources for regional couriers</h2>
+      <p class="muted">Public pages checked in October 2026. These are mostly third-party integration and tracking providers, so each finding must be confirmed with the courier.</p>
+      <ul class="sources">
+        <li><a href="https://www.clickpost.ai/courier-integrations/skyking" target="_blank" rel="noopener">ClickPost: SkyKing integration</a></li>
+        <li><a href="https://www.clickpost.ai/carrier-integration/madhur-courier-services" target="_blank" rel="noopener">ClickPost: Madhur Courier Services integration</a></li>
+        <li><a href="https://clickpost.ai/carrier-integration/shree-maruti-courier-service" target="_blank" rel="noopener">ClickPost: Shree Maruti integration</a></li>
+        <li><a href="https://clickpost.ai/tracking-api/professional-couriers" target="_blank" rel="noopener">ClickPost: Professional Couriers tracking</a></li>
+        <li><a href="https://www.clickpost.ai/tracking-api/skynet" target="_blank" rel="noopener">ClickPost: Skynet tracking</a></li>
+        <li><a href="https://carriers.aftership.com/skyking" target="_blank" rel="noopener">AfterShip: SkyKing</a></li>
+        <li><a href="https://www.aftership.com/integrations/carriers/skynetworldwide-in" target="_blank" rel="noopener">AfterShip: Skynet Worldwide India</a></li>
+        <li><a href="https://www.trackingmore.com/shreeanjanicourier-tracking" target="_blank" rel="noopener">TrackingMore: Shree Anjani Courier</a></li>
+        <li><a href="https://www.trackingmore.com/professional-couriers-tracking-api.html" target="_blank" rel="noopener">TrackingMore: Professional Couriers API</a></li>
+        <li><a href="https://ship24.com/tracking-api/shree-maruti" target="_blank" rel="noopener">Ship24: Shree Maruti tracking API</a></li>
+        <li><a href="https://documentation.despatchcloud.com/books/courier-directory/page/skynet-worldwide-express" target="_blank" rel="noopener">DespatchCloud: Skynet Worldwide Express</a></li>
+      </ul>
+    </section>
+
+    <footer>Companion to the System Architecture and Database Design. Source: docs/COURIER_FEASIBILITY.md.</footer>
+  </main>
+</div>
+<script>
+  document.getElementById('copy-btn').addEventListener('click', async () => {
+    const items = [...document.querySelectorAll('#questions li')].map((li, i) => `${i + 1}. ${li.textContent.trim()}`);
+    const text = items.join('\n');
+    const status = document.getElementById('copy-status');
+    try {
+      await navigator.clipboard.writeText(text);
+      status.textContent = 'Copied 10 questions';
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(document.getElementById('questions'));
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      status.textContent = 'Selected. Press Ctrl+C to copy';
+    }
+  });
+</script>
+</body>
+</html>

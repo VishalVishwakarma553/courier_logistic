@@ -1,0 +1,739 @@
+// Multi-Courier Booking, Tracking & ERP — Entity Relationship Diagram
+// Paste into Eraser.io: New file -> Diagram -> Entity Relationship -> paste into the code panel.
+// Source of truth: schema.sql. Colours group tables by module.
+// (P) in a table name = partitioned monthly.
+
+notation crows-feet
+
+// ===================== MASTER DATA (gray) =====================
+countries [icon: globe, color: gray] {
+  iso2 char2 pk
+  iso3 char3
+  name text
+  dial_code varchar
+  currency_code char3
+  is_active boolean
+}
+
+states [icon: map, color: gray] {
+  id smallint pk
+  country_iso2 char2 fk
+  code varchar
+  name text
+  gst_state_code char2
+}
+
+pincodes [icon: map-pin, color: gray] {
+  pincode char6 pk
+  city text
+  district text
+  state_id smallint fk
+  is_metro boolean
+  region varchar
+}
+
+hs_codes [icon: hash, color: gray] {
+  code varchar pk
+  description text
+}
+
+// ===================== IDENTITY & ACCESS (purple) =====================
+roles [icon: shield, color: purple] {
+  id int pk
+  code varchar
+  name text
+  scope enum
+  is_system boolean
+}
+
+permissions [icon: key, color: purple] {
+  id int pk
+  code varchar
+  module varchar
+  description text
+}
+
+role_permissions [icon: link, color: purple] {
+  role_id int pk fk
+  permission_id int pk fk
+}
+
+users [icon: user, color: purple] {
+  id bigint pk
+  customer_id bigint fk
+  role_id int fk
+  name text
+  email citext
+  mobile varchar
+  password_hash text
+  status enum
+  mfa_enabled boolean
+  last_login_at timestamptz
+}
+
+user_sessions [icon: log-in, color: purple] {
+  id uuid pk
+  user_id bigint fk
+  refresh_token_hash char64
+  ip_address inet
+  expires_at timestamptz
+  revoked_at timestamptz
+}
+
+// ===================== CUSTOMERS (blue) =====================
+customers [icon: briefcase, color: blue] {
+  id bigint pk
+  code varchar
+  company_name text
+  billing_type enum
+  credit_limit numeric
+  credit_days smallint
+  gstin varchar
+  pan varchar
+  billing_state_id smallint fk
+  billing_country char2 fk
+  status enum
+  account_manager_id bigint fk
+  settings jsonb
+}
+
+customer_addresses [icon: home, color: blue] {
+  id bigint pk
+  customer_id bigint fk
+  address_type enum
+  contact_name text
+  mobile varchar
+  line1 text
+  city text
+  state_name text
+  pincode varchar
+  country_iso2 char2 fk
+  is_default boolean
+}
+
+customer_documents [icon: file-text, color: blue] {
+  id bigint pk
+  customer_id bigint fk
+  doc_type varchar
+  doc_number varchar
+  file_id bigint fk
+  verified_by bigint fk
+}
+
+files [icon: file, color: blue] {
+  id bigint pk
+  storage_key text
+  mime_type varchar
+  size_bytes bigint
+  category varchar
+  customer_id bigint fk
+  uploaded_by bigint fk
+}
+
+// ===================== COURIERS & INTEGRATION (orange) =====================
+couriers [icon: truck, color: orange] {
+  id int pk
+  code varchar
+  name text
+  scope enum
+  adapter_key varchar
+  integration_mode enum
+  capabilities jsonb
+  logo_file_id bigint fk
+  status enum
+}
+
+courier_services [icon: package, color: orange] {
+  id int pk
+  courier_id int fk
+  code varchar
+  name text
+  is_international boolean
+  supports_cod boolean
+  supports_reverse boolean
+  max_weight_g int
+  volumetric_divisor int
+  status enum
+}
+
+courier_credentials [icon: lock, color: orange] {
+  id int pk
+  courier_id int fk
+  environment enum
+  config jsonb
+  secret_ciphertext bytea
+  key_id varchar
+  is_active boolean
+  updated_by bigint fk
+}
+
+courier_pickup_locations [icon: warehouse, color: orange] {
+  id bigint pk
+  courier_id int fk
+  customer_address_id bigint fk
+  courier_location_ref varchar
+  status enum
+}
+
+courier_serviceability [icon: check-circle, color: orange] {
+  courier_service_id int pk fk
+  pincode varchar pk
+  is_pickup boolean
+  is_delivery boolean
+  cod_allowed boolean
+  is_oda boolean
+  tat_days smallint
+  source varchar
+}
+
+courier_status_mappings [icon: shuffle, color: orange] {
+  courier_id int pk fk
+  courier_status_code varchar pk
+  normalized_status enum
+}
+
+courier_awb_stock [icon: tag, color: orange] {
+  courier_id int pk fk
+  awb_number varchar pk
+  status varchar
+  shipment_id bigint fk
+}
+
+// ===================== RATE ENGINE (yellow) =====================
+zones [icon: layers, color: yellow] {
+  id int pk
+  courier_id int fk
+  code varchar
+  name text
+  is_international boolean
+}
+
+zone_rules [icon: list, color: yellow] {
+  id int pk
+  zone_id int fk
+  priority smallint
+  rule_type varchar
+  params jsonb
+}
+
+zone_countries [icon: flag, color: yellow] {
+  zone_id int pk fk
+  country_iso2 char2 pk fk
+}
+
+rate_cards [icon: credit-card, color: yellow] {
+  id bigint pk
+  name text
+  card_type enum
+  courier_service_id int fk
+  customer_id bigint fk
+  valid_from date
+  valid_to date
+  status varchar
+  created_by bigint fk
+}
+
+rate_card_slabs [icon: bar-chart, color: yellow] {
+  id bigint pk
+  rate_card_id bigint fk
+  zone_id int fk
+  category enum
+  weight_from_g int
+  weight_to_g int
+  base_rate numeric
+  additional_unit_g int
+  additional_rate numeric
+}
+
+rate_card_charges [icon: plus-circle, color: yellow] {
+  id bigint pk
+  rate_card_id bigint fk
+  charge_code varchar
+  calc_method varchar
+  calc_base varchar
+  value numeric
+  min_amount numeric
+}
+
+customer_courier_services [icon: toggle-right, color: yellow] {
+  customer_id bigint pk fk
+  courier_service_id int pk fk
+  is_enabled boolean
+  selling_rate_card_id bigint fk
+  markup_percent numeric
+  markup_flat numeric
+}
+
+tax_rates [icon: percent, color: yellow] {
+  id int pk
+  name varchar
+  sac_code varchar
+  rate_percent numeric
+  valid_from date
+}
+
+// ===================== SHIPMENTS & PICKUP (green) =====================
+shipments [icon: box, color: green] {
+  id bigint pk
+  booking_ref varchar
+  customer_id bigint fk
+  created_by bigint fk
+  bulk_upload_id bigint fk
+  idempotency_key varchar
+  courier_id int fk
+  courier_service_id int fk
+  awb_number varchar
+  payment_mode enum
+  direction enum
+  is_international boolean
+  category enum
+  origin_pincode varchar
+  dest_pincode varchar
+  origin_country char2 fk
+  dest_country char2 fk
+  zone_id int fk
+  declared_weight_g int
+  chargeable_weight_g int
+  invoice_value numeric
+  cod_amount numeric
+  cod_status enum
+  sell_total numeric
+  cost_amount numeric
+  status enum
+  pickup_request_id bigint fk
+  label_file_id bigint fk
+  invoice_id bigint fk
+  expected_delivery_date date
+  delivered_at timestamptz
+  next_tracking_sync_at timestamptz
+  version int
+}
+
+shipment_addresses [icon: map-pin, color: green] {
+  shipment_id bigint pk fk
+  role enum pk
+  name text
+  mobile varchar
+  line1 text
+  city text
+  pincode varchar
+  country_iso2 char2 fk
+}
+
+shipment_packages [icon: package, color: green] {
+  id bigint pk
+  shipment_id bigint fk
+  piece_no smallint
+  child_awb varchar
+  weight_g int
+}
+
+shipment_items [icon: shopping-bag, color: green] {
+  id bigint pk
+  shipment_id bigint fk
+  description text
+  quantity int
+  unit_value numeric
+  hs_code varchar fk
+  origin_country char2 fk
+}
+
+shipment_documents [icon: paperclip, color: green] {
+  id bigint pk
+  shipment_id bigint fk
+  doc_type varchar
+  file_id bigint fk
+}
+
+shipment_charges [icon: dollar-sign, color: green] {
+  id bigint pk
+  shipment_id bigint fk
+  charge_code varchar
+  sell_amount numeric
+  cost_amount numeric
+  is_adjustment boolean
+}
+
+bulk_uploads [icon: upload, color: green] {
+  id bigint pk
+  customer_id bigint fk
+  uploaded_by bigint fk
+  file_id bigint fk
+  status enum
+  total_rows int
+  failed_rows int
+  error_report_file_id bigint fk
+}
+
+pickup_requests [icon: calendar, color: green] {
+  id bigint pk
+  customer_id bigint fk
+  courier_id int fk
+  customer_address_id bigint fk
+  pickup_date date
+  courier_pickup_ref varchar
+  status enum
+  is_manual boolean
+  created_by bigint fk
+}
+
+tracking_events_P [icon: activity, color: green] {
+  id bigint pk
+  event_time timestamptz pk
+  shipment_id bigint fk
+  status enum
+  courier_status_code varchar
+  location text
+  source enum
+  dedupe_hash char64
+}
+
+// ===================== BILLING & ACCOUNTS (red) =====================
+wallets [icon: credit-card, color: red] {
+  customer_id bigint pk fk
+  balance numeric
+  low_balance_threshold numeric
+}
+
+ledger_entries [icon: book, color: red] {
+  id bigint pk
+  customer_id bigint fk
+  entry_type enum
+  amount numeric
+  balance_after numeric
+  reference_type varchar
+  reference_id bigint
+  created_by bigint fk
+}
+
+payments [icon: dollar-sign, color: red] {
+  id bigint pk
+  customer_id bigint fk
+  purpose varchar
+  method varchar
+  gateway varchar
+  gateway_payment_id varchar
+  amount numeric
+  status enum
+  recorded_by bigint fk
+}
+
+invoices [icon: file-text, color: red] {
+  id bigint pk
+  invoice_number varchar
+  customer_id bigint fk
+  period_from date
+  period_to date
+  place_of_supply_state smallint fk
+  taxable_amount numeric
+  cgst_amount numeric
+  sgst_amount numeric
+  igst_amount numeric
+  total_amount numeric
+  status enum
+  irn varchar
+  file_id bigint fk
+}
+
+invoice_lines [icon: list, color: red] {
+  id bigint pk
+  invoice_id bigint fk
+  shipment_id bigint fk
+  sac_code varchar
+  taxable_amount numeric
+  tax_amount numeric
+}
+
+payment_allocations [icon: git-merge, color: red] {
+  payment_id bigint pk fk
+  invoice_id bigint pk fk
+  amount numeric
+}
+
+number_sequences [icon: hash, color: red] {
+  series varchar pk
+  financial_year char7 pk
+  prefix varchar
+  next_value bigint
+}
+
+courier_bills [icon: inbox, color: red] {
+  id bigint pk
+  courier_id int fk
+  bill_number varchar
+  bill_date date
+  total_amount numeric
+  status varchar
+  file_id bigint fk
+}
+
+courier_bill_lines [icon: list, color: red] {
+  id bigint pk
+  courier_bill_id bigint fk
+  awb_number varchar
+  shipment_id bigint fk
+  billed_weight_g int
+  billed_amount numeric
+  match_status varchar
+}
+
+// ===================== COD (pink) =====================
+cod_remittances [icon: arrow-down-circle, color: pink] {
+  id bigint pk
+  courier_id int fk
+  remittance_ref varchar
+  utr varchar
+  remittance_date date
+  total_amount numeric
+  file_id bigint fk
+}
+
+cod_remittance_lines [icon: list, color: pink] {
+  cod_remittance_id bigint pk fk
+  shipment_id bigint pk fk
+  amount numeric
+}
+
+cod_payouts [icon: arrow-up-circle, color: pink] {
+  id bigint pk
+  payout_ref varchar
+  customer_id bigint fk
+  gross_amount numeric
+  deductions numeric
+  net_amount numeric
+  status varchar
+  created_by bigint fk
+}
+
+cod_payout_lines [icon: list, color: pink] {
+  cod_payout_id bigint pk fk
+  shipment_id bigint pk fk
+  amount numeric
+}
+
+// ===================== NOTIFICATIONS & SUPPORT (teal) =====================
+notification_templates [icon: message-square, color: teal] {
+  id int pk
+  event_code varchar
+  channel enum
+  language varchar
+  body text
+  provider_template_id varchar
+}
+
+notification_preferences [icon: bell, color: teal] {
+  id int pk
+  customer_id bigint fk
+  event_code varchar
+  channel enum
+  notify_sender boolean
+  notify_receiver boolean
+}
+
+notification_logs_P [icon: send, color: teal] {
+  id bigint pk
+  created_at timestamptz pk
+  template_id int fk
+  channel enum
+  recipient varchar
+  shipment_id bigint
+  status enum
+  provider_message_id varchar
+}
+
+support_tickets [icon: life-buoy, color: teal] {
+  id bigint pk
+  ticket_no varchar
+  customer_id bigint fk
+  shipment_id bigint fk
+  category varchar
+  priority varchar
+  status enum
+  assigned_to bigint fk
+  created_by bigint fk
+}
+
+ticket_messages [icon: message-circle, color: teal] {
+  id bigint pk
+  ticket_id bigint fk
+  author_id bigint fk
+  body text
+  is_internal boolean
+}
+
+// ===================== SYSTEM & AUDIT (lightblue) =====================
+api_request_logs_P [icon: terminal, color: lightblue] {
+  id bigint pk
+  created_at timestamptz pk
+  courier_id int
+  shipment_id bigint
+  operation varchar
+  response_status smallint
+  duration_ms int
+  success boolean
+}
+
+webhook_events_P [icon: zap, color: lightblue] {
+  id bigint pk
+  received_at timestamptz pk
+  courier_id int
+  payload jsonb
+  signature_valid boolean
+  processing_status varchar
+}
+
+audit_logs_P [icon: eye, color: lightblue] {
+  id bigint pk
+  created_at timestamptz pk
+  user_id bigint
+  action varchar
+  entity_type varchar
+  entity_id bigint
+  old_values jsonb
+  new_values jsonb
+}
+
+system_settings [icon: settings, color: lightblue] {
+  key varchar pk
+  value jsonb
+  updated_by bigint fk
+}
+
+shipment_daily_stats [icon: trending-up, color: lightblue] {
+  stat_date date pk
+  customer_id bigint pk fk
+  courier_id int pk fk
+  booked int
+  delivered int
+  rto int
+  cod_amount numeric
+  revenue_amount numeric
+  cost_amount numeric
+}
+
+// ===================== RELATIONSHIPS =====================
+// ">" = many-to-one, "-" = one-to-one
+
+// master
+states.country_iso2 > countries.iso2
+pincodes.state_id > states.id
+
+// identity
+role_permissions.role_id > roles.id
+role_permissions.permission_id > permissions.id
+users.role_id > roles.id
+users.customer_id > customers.id
+user_sessions.user_id > users.id
+
+// customers
+customers.billing_state_id > states.id
+customers.billing_country > countries.iso2
+customers.account_manager_id > users.id
+customer_addresses.customer_id > customers.id
+customer_addresses.country_iso2 > countries.iso2
+customer_documents.customer_id > customers.id
+customer_documents.file_id > files.id
+customer_documents.verified_by > users.id
+files.customer_id > customers.id
+files.uploaded_by > users.id
+
+// couriers
+couriers.logo_file_id > files.id
+courier_services.courier_id > couriers.id
+courier_credentials.courier_id > couriers.id
+courier_credentials.updated_by > users.id
+courier_pickup_locations.courier_id > couriers.id
+courier_pickup_locations.customer_address_id > customer_addresses.id
+courier_serviceability.courier_service_id > courier_services.id
+courier_status_mappings.courier_id > couriers.id
+courier_awb_stock.courier_id > couriers.id
+courier_awb_stock.shipment_id - shipments.id
+
+// rate engine
+zones.courier_id > couriers.id
+zone_rules.zone_id > zones.id
+zone_countries.zone_id > zones.id
+zone_countries.country_iso2 > countries.iso2
+rate_cards.courier_service_id > courier_services.id
+rate_cards.customer_id > customers.id
+rate_cards.created_by > users.id
+rate_card_slabs.rate_card_id > rate_cards.id
+rate_card_slabs.zone_id > zones.id
+rate_card_charges.rate_card_id > rate_cards.id
+customer_courier_services.customer_id > customers.id
+customer_courier_services.courier_service_id > courier_services.id
+customer_courier_services.selling_rate_card_id > rate_cards.id
+
+// shipments
+shipments.customer_id > customers.id
+shipments.created_by > users.id
+shipments.bulk_upload_id > bulk_uploads.id
+shipments.courier_id > couriers.id
+shipments.courier_service_id > courier_services.id
+shipments.origin_country > countries.iso2
+shipments.dest_country > countries.iso2
+shipments.zone_id > zones.id
+shipments.pickup_request_id > pickup_requests.id
+shipments.label_file_id > files.id
+shipments.invoice_id > invoices.id
+shipment_addresses.shipment_id > shipments.id
+shipment_addresses.country_iso2 > countries.iso2
+shipment_packages.shipment_id > shipments.id
+shipment_items.shipment_id > shipments.id
+shipment_items.hs_code > hs_codes.code
+shipment_items.origin_country > countries.iso2
+shipment_documents.shipment_id > shipments.id
+shipment_documents.file_id > files.id
+shipment_charges.shipment_id > shipments.id
+bulk_uploads.customer_id > customers.id
+bulk_uploads.uploaded_by > users.id
+bulk_uploads.file_id > files.id
+bulk_uploads.error_report_file_id > files.id
+pickup_requests.customer_id > customers.id
+pickup_requests.courier_id > couriers.id
+pickup_requests.customer_address_id > customer_addresses.id
+pickup_requests.created_by > users.id
+tracking_events_P.shipment_id > shipments.id
+
+// billing
+wallets.customer_id - customers.id
+ledger_entries.customer_id > customers.id
+ledger_entries.created_by > users.id
+payments.customer_id > customers.id
+payments.recorded_by > users.id
+invoices.customer_id > customers.id
+invoices.place_of_supply_state > states.id
+invoices.file_id > files.id
+invoice_lines.invoice_id > invoices.id
+invoice_lines.shipment_id > shipments.id
+payment_allocations.payment_id > payments.id
+payment_allocations.invoice_id > invoices.id
+courier_bills.courier_id > couriers.id
+courier_bills.file_id > files.id
+courier_bill_lines.courier_bill_id > courier_bills.id
+courier_bill_lines.shipment_id > shipments.id
+
+// cod
+cod_remittances.courier_id > couriers.id
+cod_remittances.file_id > files.id
+cod_remittance_lines.cod_remittance_id > cod_remittances.id
+cod_remittance_lines.shipment_id - shipments.id
+cod_payouts.customer_id > customers.id
+cod_payouts.created_by > users.id
+cod_payout_lines.cod_payout_id > cod_payouts.id
+cod_payout_lines.shipment_id - shipments.id
+
+// notifications & support
+notification_preferences.customer_id > customers.id
+notification_logs_P.template_id > notification_templates.id
+support_tickets.customer_id > customers.id
+support_tickets.shipment_id > shipments.id
+support_tickets.assigned_to > users.id
+support_tickets.created_by > users.id
+ticket_messages.ticket_id > support_tickets.id
+ticket_messages.author_id > users.id
+
+// system
+system_settings.updated_by > users.id
+shipment_daily_stats.customer_id > customers.id
+shipment_daily_stats.courier_id > couriers.id

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Courier Platform Development Timeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: key dates, one 30-week chart, one phase table. Nothing else. */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #152030; --muted: #5a6779; --line: #d9dfe8; --grid: #edf0f4;
+  --build: #1c5bc4; --launch: #17703f;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243; --grid: #1b2430;
+    --build: #4f86e8; --launch: #3fb874; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243; --grid: #1b2430;
+  --build: #4f86e8; --launch: #3fb874; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; padding: 0 16px; }
+main { max-width: 1000px; margin: 0 auto; padding-block: 40px 80px; display: grid; gap: 40px; }
+
+.head { background: var(--surface); border: 1.5px solid var(--ink); border-radius: 4px; }
+.head-body { padding: 24px 20px 20px; display: grid; gap: 8px; }
+h1 { font: 800 clamp(28px, 5vw, 42px)/1.05 var(--font-display); font-stretch: 85%; margin: 0; }
+.sub { margin: 0; color: var(--muted); }
+.keydates { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); border-top: 1.5px solid var(--ink); }
+.keydates div { padding: 14px 20px; border-right: 1px solid var(--line); display: grid; gap: 2px; }
+.keydates div:last-child { border-right: 0; }
+.keydates .w { font: 600 11px/1 var(--font-mono); color: var(--muted); letter-spacing: .06em; }
+.keydates .d { font: 800 24px/1.1 var(--font-display); font-stretch: 85%; }
+.keydates .t { font-size: 13px; color: var(--muted); }
+.keydates .main .d { color: var(--launch); }
+
+section { display: grid; gap: 14px; }
+h2 { font: 700 22px/1.2 var(--font-display); font-stretch: 90%; margin: 0; }
+
+.gantt-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.gantt { display: grid; grid-template-columns: 190px repeat(30, minmax(26px, 1fr)); min-width: 980px; font-size: 13px; }
+.gantt > div { min-height: 36px; display: flex; align-items: center; }
+.g-label { position: sticky; left: 0; background: var(--surface); z-index: 1; padding: 0 12px; border-right: 1px solid var(--line); font-weight: 500; }
+.g-head { background: var(--bg) !important; min-height: 26px !important; }
+.g-month { font: 600 11px/1 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-left: 6px; border-left: 1px solid var(--line); min-height: 26px !important; background: var(--bg); }
+.g-week { justify-content: center; font: 500 10.5px/1 var(--font-mono); color: var(--muted); border-left: 1px solid var(--grid); min-height: 24px !important; border-bottom: 1px solid var(--line); }
+.g-cell { border-left: 1px solid var(--grid); }
+.bar { height: 22px; border-radius: 4px; margin: 0 2px; align-self: center; color: #fff; font: 600 11.5px/22px var(--font-body); padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar.build { background: var(--build); }
+.bar.launch { background: var(--launch); }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+tbody tr:last-child td { border-bottom: 0; }
+th { font: 600 11px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+td:first-child { font-weight: 600; white-space: nowrap; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.live td { background: color-mix(in srgb, var(--launch) 10%, transparent); }
+.note { font-size: 13.5px; color: var(--muted); margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <header class="head">
+    <div class="head-body">
+      <h1>Courier Platform Development Timeline</h1>
+      <p class="sub">Estimated duration: 30 weeks (about 7 months)</p>
+    </div>
+    <div class="keydates">
+      <div><span class="w">WEEK 6</span><span class="d">11 Dec 2026</span><span class="t">Working demo</span></div>
+      <div class="main"><span class="w">WEEK 23</span><span class="d">9 Apr 2027</span><span class="t">Platform launch (shipping within India)</span></div>
+      <div><span class="w">WEEK 28</span><span class="d">14 May 2027</span><span class="t">International shipping added</span></div>
+      <div><span class="w">WEEK 30</span><span class="d">28 May 2027</span><span class="t">Project complete</span></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>Week by week</h2>
+    <div class="gantt-wrap"><div class="gantt" id="gantt" role="img" aria-label="30-week project timeline chart"></div></div>
+  </section>
+
+  <section>
+    <h2>Phases</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Phase</th><th>Weeks</th><th>Dates</th><th>What gets delivered</th></tr></thead>
+      <tbody>
+        <tr><td>Design</td><td class="n">1–3</td><td class="n">2 – 20 Nov 2026</td><td>Requirement sign-off and screen designs</td></tr>
+        <tr><td>Working demo</td><td class="n">1–6</td><td class="n">2 Nov – 11 Dec 2026</td><td>Login, booking, Delhivery AWB and label, tracking page</td></tr>
+        <tr><td>Core operations</td><td class="n">7–12</td><td class="n">14 Dec 2026 – 22 Jan 2027</td><td>Rates, bulk booking, pickups, admin dashboard, notifications</td></tr>
+        <tr><td>Domestic couriers</td><td class="n">13–16</td><td class="n">25 Jan – 19 Feb 2027</td><td>Blue Dart and all regional couriers</td></tr>
+        <tr><td>Billing &amp; reports</td><td class="n">17–21</td><td class="n">22 Feb – 26 Mar 2027</td><td>Wallet, invoices, COD, reports, support</td></tr>
+        <tr class="live"><td>Testing &amp; go-live</td><td class="n">22–23</td><td class="n">29 Mar – 9 Apr 2027</td><td>Client testing, then domestic launch</td></tr>
+        <tr><td>International</td><td class="n">24–28</td><td class="n">12 Apr – 14 May 2027</td><td>DHL, FedEx, UPS, Aramex, Skynet</td></tr>
+        <tr><td>Handover</td><td class="n">29–30</td><td class="n">17 – 28 May 2027</td><td>Final fixes, training, code handover</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Assumes a start date of 2 November 2026 and a team of 3 developers. If the start moves, all dates move by the same amount.</p>
+  </section>
+</main>
+<script>
+(function () {
+  const months = [['Nov 2026', 1, 4], ['Dec', 5, 9], ['Jan 2027', 10, 13], ['Feb', 14, 17], ['Mar', 18, 22], ['Apr', 23, 26], ['May', 27, 30]];
+  const rows = [
+    ['Design', 1, 3, 'build'],
+    ['Working demo', 1, 6, 'build'],
+    ['Core operations', 7, 12, 'build'],
+    ['Domestic couriers', 13, 16, 'build'],
+    ['Billing & reports', 17, 21, 'build'],
+    ['Testing & go-live', 22, 23, 'launch'],
+    ['International', 24, 28, 'build'],
+    ['Handover', 29, 30, 'launch'],
+  ];
+  const g = document.getElementById('gantt');
+  const el = (cls, style, text) => { const d = document.createElement('div'); d.className = cls; d.setAttribute('style', style); if (text) d.textContent = text; return d; };
+  g.appendChild(el('g-label g-head', 'grid-row: 1', ''));
+  months.forEach(([n, a, b]) => g.appendChild(el('g-month', `grid-row: 1; grid-column: ${a + 1} / ${b + 2}`, n)));
+  g.appendChild(el('g-label g-head', 'grid-row: 2', 'Week'));
+  for (let w = 1; w <= 30; w++) g.appendChild(el('g-week', `grid-row: 2; grid-column: ${w + 1}`, String(w)));
+  rows.forEach(([label, a, b, cls], i) => {
+    const r = i + 3;
+    g.appendChild(el('g-label', `grid-row: ${r}; grid-column: 1`, label));
+    for (let w = 1; w <= 30; w++) g.appendChild(el('g-cell', `grid-row: ${r}; grid-column: ${w + 1}`));
+    g.appendChild(el('bar ' + cls, `grid-row: ${r}; grid-column: ${a + 1} / ${b + 2}`, `Wk ${a}–${b}`));
+  });
+})();
+</script>
+</body>
+</html>

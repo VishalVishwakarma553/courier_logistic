@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Courier Platform Running Costs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: headline monthly/yearly figures, then three editable cost groups. Same family as the Development Cost page. */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #152030; --muted: #5a6779; --line: #d9dfe8;
+  --accent: #1c5bc4; --accent-soft: #e6eefb; --total: #17703f; --input-bg: #f8fafc;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+    --accent: #79a9ff; --accent-soft: #1a2a45; --total: #5fd391; --input-bg: #1b2430; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #151c26; --ink: #e4e9f1; --muted: #95a2b4; --line: #263243;
+  --accent: #79a9ff; --accent-soft: #1a2a45; --total: #5fd391; --input-bg: #1b2430; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; padding: 0 16px; }
+main { max-width: 860px; margin: 0 auto; padding-block: 40px 80px; display: grid; gap: 32px; }
+
+.head { background: var(--surface); border: 1.5px solid var(--ink); border-radius: 4px; }
+.head-body { padding: 24px 20px; display: grid; gap: 6px; }
+h1 { font: 800 clamp(28px, 5vw, 42px)/1.05 var(--font-display); font-stretch: 85%; margin: 0; }
+.sub { margin: 0; color: var(--muted); }
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); border-top: 1.5px solid var(--ink); }
+.figures div { padding: 16px 20px; border-right: 1px solid var(--line); display: grid; gap: 2px; }
+.figures div:last-child { border-right: 0; }
+.figures .l { font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.figures .v { font: 800 28px/1.1 var(--font-display); font-stretch: 85%; font-variant-numeric: tabular-nums; }
+.figures .main .v { color: var(--total); }
+
+section { display: grid; gap: 12px; }
+h2 { font: 700 21px/1.2 var(--font-display); font-stretch: 90%; margin: 0; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+h2 .st { font: 500 15px/1 var(--font-mono); color: var(--muted); }
+.driver { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--accent-soft); border-radius: 8px; padding: 12px 16px; font-weight: 500; }
+.driver input { max-width: 120px; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 520px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: 0; }
+th { font: 600 11px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+th.r, td.r { text-align: right; }
+td.amt { font-family: var(--font-mono); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .hint { display: block; font-size: 12.5px; color: var(--muted); }
+input[type="number"] {
+  width: 100%; max-width: 120px; font: 500 14px/1.2 var(--font-mono); text-align: right; color: var(--ink);
+  background: var(--input-bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px;
+}
+input.sm { max-width: 80px; }
+input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.rupee { display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end; width: 100%; }
+.rupee span { color: var(--muted); font-family: var(--font-mono); font-size: 14px; }
+
+.summary td:first-child { font-weight: 500; }
+.summary tr.sum td { font-weight: 700; background: var(--bg); }
+.summary tr.grand td { font-weight: 800; background: var(--accent-soft); }
+.summary tr.grand td.amt { color: var(--total); font-size: 15.5px; }
+.pct { display: inline-flex; align-items: center; gap: 6px; }
+.pct input { max-width: 70px; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+button { font: 600 13.5px/1 var(--font-body); padding: 9px 14px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#saved { font-size: 13px; color: var(--muted); }
+.note { font-size: 13.5px; color: var(--muted); margin: 0; max-width: 78ch; }
+</style>
+</head>
+<body>
+<main>
+  <header class="head">
+    <div class="head-body">
+      <h1>Courier Platform Running Costs</h1>
+      <p class="sub">Hosting and maintenance after launch. Generic 2026 market rates. Edit any number and the totals update.</p>
+    </div>
+    <div class="figures">
+      <div><span class="l">Per month</span><span class="v" id="fig-month">₹1.77 lakh</span></div>
+      <div><span class="l">Per year</span><span class="v" id="fig-year">₹21.2 lakh</span></div>
+      <div class="main"><span class="l">Per year incl. GST</span><span class="v" id="fig-year-gst">₹25.0 lakh</span></div>
+    </div>
+  </header>
+
+  <section>
+    <h2>1. Hosting (AWS Mumbai) <span class="st" id="st-host"></span></h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Item</th><th class="r">Per month</th></tr></thead>
+      <tbody id="host"></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>2. Messages &amp; tracking <span class="st" id="st-use"></span></h2>
+    <label class="driver" for="ships">Shipments per month <input type="number" id="ships" min="0" step="1000" value="30000"></label>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Item</th><th class="r">Per shipment</th><th class="r">Rate</th><th class="r">Per month</th></tr></thead>
+      <tbody id="use"></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>3. Maintenance &amp; support <span class="st" id="st-maint"></span></h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Item</th><th class="r">Per month</th></tr></thead>
+      <tbody>
+        <tr><td>Maintenance &amp; support<span class="hint">Bug fixes, security updates, server monitoring, courier API changes, small changes up to about 40 hours a month</span></td>
+          <td class="r"><span class="rupee"><span>₹</span><input type="number" id="maint" min="0" step="5000" value="70000" aria-label="Maintenance per month"></span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Total</h2>
+    <div class="table-wrap"><table class="summary">
+      <thead><tr><th></th><th class="r">Per month</th><th class="r">Per year</th></tr></thead>
+      <tbody>
+        <tr><td>Hosting</td><td class="r amt" id="m-host"></td><td class="r amt" id="y-host"></td></tr>
+        <tr><td>Messages &amp; tracking</td><td class="r amt" id="m-use"></td><td class="r amt" id="y-use"></td></tr>
+        <tr><td>Maintenance &amp; support</td><td class="r amt" id="m-maint"></td><td class="r amt" id="y-maint"></td></tr>
+        <tr class="sum"><td>Total excluding GST</td><td class="r amt" id="m-total"></td><td class="r amt" id="y-total"></td></tr>
+        <tr><td><span class="pct">GST <input type="number" id="gst" class="sm" min="0" max="28" step="1" value="18" aria-label="GST percent"> %</span></td><td class="r amt" id="m-gst"></td><td class="r amt" id="y-gst"></td></tr>
+        <tr class="grand"><td>Total including GST</td><td class="r amt" id="m-grand"></td><td class="r amt" id="y-grand"></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <div class="actions">
+    <button type="button" id="reset">Reset to market rates</button>
+    <span id="saved" role="status">Your changes are remembered in this browser.</span>
+  </div>
+
+  <p class="note">Not included: payment gateway fees (about 2% per online payment, usually passed on to customers) and courier charges. During development, only the testing server is needed (about ₹12,000 per month).</p>
+</main>
+<script>
+(function () {
+  const HOST = [
+    ['App servers', 13000],
+    ['Database (with standby copy and backups)', 15000],
+    ['Cache & job queues', 4500],
+    ['Load balancer, network, fixed IP', 6000],
+    ['File storage & CDN (labels, invoices)', 2500],
+    ['Monitoring, logs & backups', 5000],
+    ['Firewall & security keys', 2000],
+    ['Testing (staging) server', 10000],
+    ['Domain & email sending', 600],
+  ];
+  const USE = [
+    ['SMS', 'Messages per shipment', 2, 0.20],
+    ['WhatsApp', 'Messages per shipment', 3, 0.20],
+    ['Tracking service', 'Share of shipments tracked through it (couriers without a tracking API)', 0.2, 3.00],
+  ];
+  const DEF = { host: HOST.map(h => h[1]), use: USE.map(u => [u[2], u[3]]), ships: 30000, maint: 70000, gst: 18 };
+  const KEY = 'courier-running-cost-v1';
+  const $ = id => document.getElementById(id);
+  const inr = n => '₹' + new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.round(n));
+  const lakh = n => '₹' + (n / 100000).toLocaleString('en-IN', { minimumFractionDigits: n < 1000000 ? 2 : 1, maximumFractionDigits: n < 1000000 ? 2 : 1 }) + ' lakh';
+  const num = id => { const v = parseFloat($(id).value); return isFinite(v) && v >= 0 ? v : 0; };
+  const money = (id, val, label, step) => `<span class="rupee"><span>₹</span><input type="number" id="${id}" min="0" step="${step}" value="${val}" aria-label="${label}"></span>`;
+
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(KEY));
+      if (s && s.host && s.host.length === HOST.length && s.use && s.use.length === USE.length) return s;
+    } catch (e) {}
+    return JSON.parse(JSON.stringify(DEF));
+  }
+  function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+
+  function render(s) {
+    $('host').innerHTML = HOST.map(([name], i) =>
+      `<tr><td>${name}</td><td class="r">${money('h' + i, s.host[i], name + ' per month', 500)}</td></tr>`).join('');
+    $('use').innerHTML = USE.map(([name, hint], i) =>
+      `<tr><td>${name}<span class="hint">${hint}</span></td>` +
+      `<td class="r"><input type="number" class="sm" id="q${i}" min="0" step="${i === 2 ? 0.05 : 1}" value="${s.use[i][0]}" aria-label="${name} per shipment"></td>` +
+      `<td class="r">${money('r' + i, s.use[i][1], name + ' rate', 0.05)}</td>` +
+      `<td class="r amt" id="u${i}"></td></tr>`).join('');
+    $('ships').value = s.ships; $('maint').value = s.maint; $('gst').value = s.gst;
+    calc();
+  }
+
+  function calc() {
+    const host = HOST.map((_, i) => num('h' + i));
+    const hostT = host.reduce((a, b) => a + b, 0);
+    const ships = num('ships');
+    const use = USE.map((_, i) => [num('q' + i), num('r' + i)]);
+    let useT = 0;
+    use.forEach(([q, r], i) => { const v = ships * q * r; useT += v; $('u' + i).textContent = inr(v); });
+    const maint = num('maint'), gst = num('gst');
+    const total = hostT + useT + maint, g = total * gst / 100;
+    const set = (k, m) => { $('m-' + k).textContent = inr(m); $('y-' + k).textContent = inr(m * 12); };
+    set('host', hostT); set('use', useT); set('maint', maint); set('total', total); set('gst', g); set('grand', total + g);
+    $('st-host').textContent = inr(hostT) + ' / month';
+    $('st-use').textContent = inr(useT) + ' / month';
+    $('st-maint').textContent = inr(maint) + ' / month';
+    $('fig-month').textContent = lakh(total);
+    $('fig-year').textContent = lakh(total * 12);
+    $('fig-year-gst').textContent = lakh((total + g) * 12);
+    save({ host, use, ships, maint, gst });
+  }
+
+  document.addEventListener('input', e => { if (e.target.matches('input[type="number"]')) calc(); });
+  $('reset').addEventListener('click', () => {
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    render(load());
+    $('saved').textContent = 'Reset to market rates.';
+  });
+  render(load());
+})();
+</script>
+</body>
+</html>
