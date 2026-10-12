@@ -1,0 +1,15 @@
+{
+  "name": "courier-erp-doc-tools",
+  "private": true,
+  "type": "module",
+  "description": "Regenerate deliverable HTML pages from .md and validate the database schema",
+  "scripts": {
+    "pages": "node md2page.mjs ../docs/TESTING_AND_DEPLOYMENT.md ../docs/testing-and-deployment.html \"Courier Platform Testing and Deployment\" \"DELIVERABLE 09 / TESTING &amp; DEPLOYMENT PLAN\" && node md2page.mjs ../docs/OWNERSHIP.md ../docs/ownership.html \"Courier Platform Code Ownership\" \"DELIVERABLE 10 / SOURCE CODE &amp; DATABASE OWNERSHIP\" && node md2page.mjs ../docs/HANDOVER_DOCUMENTATION.md ../docs/handover-documentation.html \"Courier Platform Handover Documentation\" \"DELIVERABLE 11 / ADMIN ACCESS &amp; DEPLOYMENT DOCUMENTATION\" && node md2page.mjs ../docs/PAYMENT_PLAN.md ../docs/payment-plan.html \"Courier Platform Payment Plan\" \"DELIVERABLE 12 / MILESTONE PAYMENT PLAN\"",
+    "modules": "node gen-modules.mjs ../docs/MODULES_AND_FEATURES.md ../docs/modules-and-features.html",
+    "validate-schema": "node validate-schema.mjs ../database/schema.sql"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.3.x",
+    "markdown-it": "14.1.0"
+  }
+}
